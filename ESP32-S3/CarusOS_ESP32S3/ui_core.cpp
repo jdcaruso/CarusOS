@@ -17,6 +17,7 @@ static lv_obj_t * ntp_live_label = NULL; // For live NTP updates inside the app
 static lv_obj_t * sys_info_stats_label = NULL; // For live Sys Info updates
 static lv_obj_t * mic_level_bar = NULL; // Mic test level meter
 static lv_timer_t * mic_timer = NULL;   // Updates the mic level meter
+static lv_obj_t * datetime_date_label = NULL; // Date & Time app: date line
 static lv_obj_t * imu_ball = NULL;      // IMU app: tilt ball
 static lv_obj_t * imu_box = NULL;       // IMU app: bounding box
 static lv_timer_t * imu_timer = NULL;   // Reads the IMU and moves the ball
@@ -69,7 +70,7 @@ static void app_build_imu(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * 
 
 static carusos_app_t g_apps[] = {
     { 0, LV_SYMBOL_PLUS,      TXT_APP_CALC_TITLE, true,                 app_build_calc },
-    { 1, LV_SYMBOL_BELL,      "NTP Sync",         true,                 app_build_ntp },
+    { 1, LV_SYMBOL_BELL,      "Fecha y Hora",     true,                 app_build_ntp },
     { 2, LV_SYMBOL_AUDIO,     "Audio",            CARUSOS_USE_AUDIO,    app_build_audio },
     { 3, LV_SYMBOL_SETTINGS,  TXT_APP_INFO_TITLE, true,                 app_build_settings },
     { 4, LV_SYMBOL_POWER,     TXT_SCREEN_SLEEP,   true,                 NULL /* action: Sleep */ },
@@ -107,6 +108,7 @@ static void app_back_event_cb(lv_event_t * e) {
     lv_event_code_t code = lv_event_get_code(e);
     if(code == LV_EVENT_CLICKED) {
         ntp_live_label = NULL; // Clear pointer when leaving NTP app
+        datetime_date_label = NULL; // Clear pointer when leaving Date & Time app
         sys_info_stats_label = NULL; // Clear pointer when leaving Sys Info app
         app_wifi_label = NULL;
         app_time_label = NULL;
@@ -176,13 +178,21 @@ static void app_build_calc(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t *
 
 static void app_build_ntp(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label) {
     lv_label_set_text(title_label, TXT_APP_NTP_TITLE);
-    lv_label_set_text(content, TXT_APP_NTP_DESC);
+    lv_obj_add_flag(content, LV_OBJ_FLAG_HIDDEN); // hide default content label
 
+    // Big live time (HH:MM:SS)
     ntp_live_label = lv_label_create(app_screen);
-    lv_label_set_text(ntp_live_label, "--:--");
+    lv_label_set_text(ntp_live_label, "--:--:--");
     lv_obj_set_style_text_font(ntp_live_label, &lv_font_montserrat_48, 0);
     lv_obj_set_style_text_color(ntp_live_label, lv_color_hex(0x00FF00), 0);
-    lv_obj_center(ntp_live_label);
+    lv_obj_align(ntp_live_label, LV_ALIGN_CENTER, 0, -20);
+
+    // Date line (DD/MM/YYYY)
+    datetime_date_label = lv_label_create(app_screen);
+    lv_label_set_text(datetime_date_label, "--/--/----");
+    lv_obj_set_style_text_font(datetime_date_label, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_color(datetime_date_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_align(datetime_date_label, LV_ALIGN_CENTER, 0, 45);
 }
 
 static void app_build_audio(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label) {
@@ -737,23 +747,21 @@ static void add_app_icon(lv_obj_t * parent, int app_id) {
 }
 
 static void ui_poll_timer_cb(lv_timer_t * timer) {
-    // Update WiFi Icon
-    if (backend_is_wifi_connected()) {
-        lv_obj_set_style_text_color(wifi_label, lv_color_hex(0x00FF00), 0); // Green
-        if (app_wifi_label) lv_obj_set_style_text_color(app_wifi_label, lv_color_hex(0x00FF00), 0);
+    // WiFi icon color
+    lv_color_t wifi_col = backend_is_wifi_connected() ? lv_color_hex(0x00FF00) : lv_color_hex(0x555555);
+    lv_obj_set_style_text_color(wifi_label, wifi_col, 0);
+    if (app_wifi_label) lv_obj_set_style_text_color(app_wifi_label, wifi_col, 0);
 
-        // Update Time if NTP synced
-        int h, m;
-        if (backend_get_time(h, m)) {
-            lv_label_set_text_fmt(time_label, "%02d:%02d", h, m);
-            if (app_time_label) lv_label_set_text_fmt(app_time_label, "%02d:%02d", h, m);
-            if (ntp_live_label != NULL) {
-                lv_label_set_text_fmt(ntp_live_label, "%02d:%02d", h, m);
-            }
-        }
-    } else {
-        lv_obj_set_style_text_color(wifi_label, lv_color_hex(0x555555), 0); // Gray
-        if (app_wifi_label) lv_obj_set_style_text_color(app_wifi_label, lv_color_hex(0x555555), 0);
+    // Clock: the system time is valid if NTP synced OR the RTC seeded it at boot,
+    // so this runs regardless of WiFi.
+    struct tm dt;
+    if (backend_get_datetime(dt)) {
+        lv_label_set_text_fmt(time_label, "%02d:%02d", dt.tm_hour, dt.tm_min);
+        if (app_time_label) lv_label_set_text_fmt(app_time_label, "%02d:%02d", dt.tm_hour, dt.tm_min);
+        if (ntp_live_label)
+            lv_label_set_text_fmt(ntp_live_label, "%02d:%02d:%02d", dt.tm_hour, dt.tm_min, dt.tm_sec);
+        if (datetime_date_label)
+            lv_label_set_text_fmt(datetime_date_label, "%02d/%02d/%04d", dt.tm_mday, dt.tm_mon + 1, dt.tm_year + 1900);
     }
 
     // Update Sys Info if open

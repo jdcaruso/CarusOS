@@ -6,7 +6,7 @@
 // Copy secrets.h.example to secrets.h and fill in your values.
 #include "secrets.h"
 
-#define CARUSOS_VERSION         "v0.37.0"
+#define CARUSOS_VERSION         "v0.38.0"
 #define CARUSOS_AUTHOR          "Javier D. Caruso"
 #define CARUSOS_SOURCE_DATE     "2026-06-27"
 #define CARUSOS_LANG_ES         1 // 1 for Spanish, 0 for English
@@ -26,6 +26,7 @@
 // Configuraciones del Sistema (Core)
 #define CARUSOS_USE_WIFI        1
 #define CARUSOS_USE_NTP_TIME    1
+#define CARUSOS_USE_RTC         1 // 1: PCF85063 RTC (offline clock). 0: no se compila.
 #define CARUSOS_USE_BLUETOOTH   0 // 0: Compile sin Bluetooth, 1: Compilar soporte BT
 #define CARUSOS_USE_AUDIO       1 // 0: Disable Audio and save RAM/Flash, 1: Enable ES8311 Audio   
 #define CARUSOS_USE_FS          0 // 1: Enable LittleFS File System

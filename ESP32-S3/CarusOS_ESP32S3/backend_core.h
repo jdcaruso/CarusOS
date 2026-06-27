@@ -11,6 +11,9 @@ bool backend_is_wifi_connected();
 // Thread-safe query for NTP Time
 bool backend_get_time(int &hour, int &minute);
 
+// Full date+time (system clock: NTP-synced or RTC-seeded). True if valid.
+bool backend_get_datetime(struct tm &out);
+
 // Audio control
 void backend_set_audio_state(bool play);
 void backend_set_audio_volume(int volume);

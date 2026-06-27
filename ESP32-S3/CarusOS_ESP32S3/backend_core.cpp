@@ -3,6 +3,8 @@
 #include "lvgl_port.h"
 #include <WiFi.h>
 #include <time.h>
+#include <sys/time.h>
+#include "rtc_pcf85063.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/queue.h>
@@ -276,6 +278,20 @@ static void Task_Backend(void *pvParameters) {
     runtime_use_animations = preferences.getBool("anim", false);
     runtime_use_bluetooth = preferences.getBool("bt", false);
 
+#if CARUSOS_USE_RTC
+    // Seed the system clock from the battery-backed RTC so the time is right
+    // immediately, even before (or without) a WiFi/NTP sync.
+    if (rtc_begin()) {
+        struct tm rtm;
+        if (rtc_get(rtm) && rtm.tm_year > 120) { // valid (year > 2020)
+            time_t t = mktime(&rtm);
+            struct timeval tv = { .tv_sec = t, .tv_usec = 0 };
+            settimeofday(&tv, NULL);
+            Serial.println("[RTC] System time seeded from RTC.");
+        }
+    }
+#endif
+
 #if CARUSOS_USE_BLUETOOTH
     if (runtime_use_bluetooth) {
         BLEDevice::init("CarusOS");
@@ -320,6 +336,23 @@ static void Task_Backend(void *pvParameters) {
                 WiFi.begin(WIFI_SSID, WIFI_PASSWORD); // Reconnect
             }
         }
+
+#if CARUSOS_USE_RTC
+        // Once NTP has a valid time, persist it to the RTC (once per connection).
+        static bool rtc_synced_from_ntp = false;
+        if (wifi_connected) {
+            if (!rtc_synced_from_ntp) {
+                struct tm nt;
+                if (getLocalTime(&nt, 5) && nt.tm_year > 120) {
+                    rtc_set(nt);
+                    rtc_synced_from_ntp = true;
+                    Serial.println("[RTC] Updated from NTP.");
+                }
+            }
+        } else {
+            rtc_synced_from_ntp = false;
+        }
+#endif
 
         if (ota_enabled) {
 #if CARUSOS_USE_OTA
@@ -374,6 +407,13 @@ bool backend_get_time(int &hour, int &minute) {
             minute = timeinfo.tm_min;
             return true;
         }
+    }
+    return false;
+}
+
+bool backend_get_datetime(struct tm &out) {
+    if (getLocalTime(&out, 10)) {
+        if (out.tm_year > 120) return true; // valid (year > 2020)
     }
     return false;
 }
