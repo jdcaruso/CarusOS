@@ -71,7 +71,7 @@ contribute to.
 
 ## 🧭 Onboard Hardware Not Yet Used
 
-The Waveshare ESP32-S3-Touch-LCD-4.3B has several chips we haven't exposed yet
+The Waveshare ESP32-S3-Touch-LCD-4B has several chips we haven't exposed yet
 (confirmed by the board's `examples/` demos). Candidates for the basic feature
 suite:
 

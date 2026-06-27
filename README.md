@@ -1,10 +1,44 @@
 # CarusOS 📱
 
-![Version](https://img.shields.io/badge/version-v0.39.0-blue)
+![Version](https://img.shields.io/badge/version-v0.39.1-blue)
 ![Platform](https://img.shields.io/badge/platform-ESP32--S3-green)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
 **CarusOS** is a lightweight, ultra-fast, multi-threaded Operating System for ESP32-S3 microcontrollers with RGB Touch displays, built heavily on top of **LVGL 9.x**. It is designed to be highly modular, extensible, and completely non-blocking.
+
+## 🧩 Configuration-Based — pay only for what you use
+
+CarusOS is **modular by compile-time configuration**. Every feature — Audio, WiFi,
+NTP, OTA, the File System, even individual apps — is gated behind a flag in
+[`carusos_config.h`](ESP32-S3/CarusOS_ESP32S3/carusos_config.h). Flip a flag off and
+that feature **compiles out completely**: its code, its libraries, and its RAM all
+disappear from the binary. A disabled feature is **not** dead weight you carry "just
+in case" — it simply isn't there.
+
+This is arguably CarusOS's best trait. The app partition is only **3 MB**, so every
+kilobyte counts: a trimmed-down build leaves room for *your* apps. Don't need sound?
+`CARUSOS_USE_AUDIO 0`. Don't need a clock, an explorer, or Bluetooth? Off they go, and
+the OS shrinks to fit. Build the device *you* want, not the one someone else imagined.
+
+### 📊 Feature source sizes (in-sketch drivers)
+
+These are the **real sizes of the driver source files bundled in the sketch** for each
+hardware feature — a "how much code does this pull in" reference, *not* a compiled
+flash-footprint measurement.
+
+> ⚠️ This only counts the sketch's own files. Features that live in the ESP32 Arduino
+> core or external libraries (WiFi, OTA, FFat, and especially **BLE ≈ 1 MB**) have
+> little or no dedicated file here yet weigh far more in the final binary. The
+> always-on baseline (LVGL + Arduino_GFX + WiFi/core) dominates the binary regardless.
+> Real per-feature flash numbers need differential builds — see [pendings.md](pendings.md).
+
+| Feature | Flag | In-sketch source files | Size |
+|---|---|---|---|
+| Audio (ES8311) | `CARUSOS_USE_AUDIO` | `es8311.c` + `es8311.h` + `es8311_reg.h` + `audio_hal.h` | ~33 KB |
+| Mic Test (ES7210) | `ENABLE_APP_MIC_TEST` | `es7210.cpp` + `es7210.h` + `mic_es7210.cpp` + `mic_es7210.h` | ~31 KB |
+| IMU / Motion | `ENABLE_APP_IMU` | `imu_qmi8658.cpp` + `.h` *(full driver in SensorLib)* | ~1.8 KB |
+| RTC clock | `CARUSOS_USE_RTC` | `rtc_pcf85063.cpp` + `.h` *(full driver in SensorLib)* | ~1.5 KB |
+| WiFi · NTP · OTA · FS · Telnet · BLE | *(various)* | inline in `backend_core.cpp`, gated by `#if` | — |
 
 ## ✨ Features
 
@@ -22,7 +56,7 @@
 
 ## 🚀 Compilation Settings (CRITICAL)
 
-To compile CarusOS correctly and avoid bootloops, you **MUST** configure your Arduino IDE exactly as follows for a standard 16MB ESP32-S3 board (like the Waveshare 4.3B):
+To compile CarusOS correctly and avoid bootloops, you **MUST** configure your Arduino IDE exactly as follows for a standard 16MB ESP32-S3 board (like the Waveshare 4B):
 
 1. **Board:** `ESP32S3 Dev Module`
 2. **Flash Size:** `16MB (128Mb)`
@@ -42,7 +76,7 @@ Install these from the Arduino Library Manager (or as a `.zip`):
 
 The ESP32 Arduino core (v3.x) ships the rest (`WiFi`, `Preferences`, `ArduinoOTA`, `HTTPClient`, `FFat`, `Wire`).
 
-> Target board: **Waveshare ESP32-S3-Touch-LCD-4.3B** (480x480, ST7701 + GT911). The pin map lives in `pin_config.h` and `lvgl_port.cpp`.
+> Target board: **Waveshare ESP32-S3-Touch-LCD-4B** (480x480, ST7701 + GT911). The pin map lives in `pin_config.h` and `lvgl_port.cpp`.
 
 ### First-time setup (credentials)
 

@@ -5,7 +5,7 @@ Guidance for AI assistants (Claude, Gemini, etc.) working in this repository.
 ## What CarusOS is
 
 A lightweight, multi-threaded mini-OS for the **ESP32-S3** with an RGB touch
-display, built on **LVGL 9.x**. Target hardware: **Waveshare ESP32-S3-Touch-LCD-4.3B**
+display, built on **LVGL 9.x**. Target hardware: **Waveshare ESP32-S3-Touch-LCD-4B**
 (480x480, ST7701 panel + GT911 touch, ES8311 audio codec, XCA9554 I/O expander).
 
 This is a hobby / learning project and a **public** repository. Keep that in mind:

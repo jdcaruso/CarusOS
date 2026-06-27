@@ -813,12 +813,14 @@ static void ui_poll_timer_cb(lv_timer_t * timer) {
         if (warnings.length() > 0) warnings = "\n-- ALERTS --\n" + warnings;
 
         lv_label_set_text_fmt(sys_info_stats_label,
+            "CarusOS " CARUSOS_VERSION "\n\n"
             "WiFi: %s (%s)\n"
             "Audio Volume: %d%%\n\n"
-            "RAM (Heap): %d (Libre) / %d KB (Total)\n"
-            "PSRAM: %d (Libre) / %d KB (Total)\n\n"
-            "Storage (APP): %d (Libre) / %d KB (Total)\n"
-            "Storage (Total Flash): %d MB%s\n\n"
+            "-- Memoria (Libre / Total) --\n"
+            "RAM (Heap): %d / %d KB\n"
+            "PSRAM: %d / %d KB\n"
+            "Storage (APP): %d / %d KB\n"
+            "Flash total: %d MB%s\n\n"
             "Created by: " CARUSOS_AUTHOR "\n"
             "Source code: " CARUSOS_SOURCE_DATE "\n"
             "Compilation date: " __DATE__ " " __TIME__,
