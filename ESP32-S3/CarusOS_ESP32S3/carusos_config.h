@@ -6,9 +6,9 @@
 // Copy secrets.h.example to secrets.h and fill in your values.
 #include "secrets.h"
 
-#define CARUSOS_VERSION         "v0.33.0"
+#define CARUSOS_VERSION         "v0.34.0"
 #define CARUSOS_AUTHOR          "Javier D. Caruso"
-#define CARUSOS_SOURCE_DATE     "2026-06-26"
+#define CARUSOS_SOURCE_DATE     "2026-06-27"
 #define CARUSOS_LANG_ES         1 // 1 for Spanish, 0 for English
 
 // NTP Settings
@@ -41,7 +41,10 @@
 #define OTA_UPDATE_URL          "http://example.com/carusos/firmware.bin" // Cambiar por tu servidor
 
 // Aplicaciones Habilitadas (GUI)
-#define ENABLE_APP_SETTINGS     1   
+// 0: Ocultar apps deshabilitadas del menu (recomendado).
+// 1: Mostrarlas grisadas/no clickeables.
+#define CARUSOS_SHOW_DISABLED_APPS 0
+#define ENABLE_APP_SETTINGS     1
 #define CARUSOS_APP_EXPLORER    0 // 1: Enable File Explorer App
 #define CARUSOS_APP_GALLERY     0 // 0: Disable Web Gallery, 1: Enable Web Gallery
 #define CARUSOS_USE_PNG         0 // 0: Disable PNG decoding (saves RAM/Flash), 1: Enable PNG decoding

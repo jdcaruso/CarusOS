@@ -31,10 +31,32 @@
   - Explicit Over-The-Air (OTA) update mode for security.
   - Internal Flash FATFS mounting and formatting.
 
+## 🏗️ Architecture & Infrastructure
+
+Improvements that make CarusOS a more "real" OS and an easier project to
+contribute to.
+
+- **App Registry (in progress):** Replace the hard-coded `switch(app_id)` with a
+  table of apps (`id`, `icon`, `name`, `enabled`, `build()`). Adding an app
+  becomes "one entry + one function" instead of editing the core in several
+  places. *(See `ui_core.cpp` and the "How to add an app" section in `CLAUDE.md`.)*
+- **Inter-core message queue:** Replace the `volatile` flags shared between the
+  UI (Core 1) and backend (Core 0) with a FreeRTOS queue. Scales better than
+  ad-hoc flags and avoids cross-thread access to WiFi/driver state.
+- **PlatformIO support:** Add a `platformio.ini` pinning board, build flags and
+  library versions, so the project builds without hand-tuning Arduino IDE.
+- **CI build (GitHub Actions):** Compile on every push to catch breakage early —
+  the pragmatic equivalent of tests for embedded.
+- **CONTRIBUTING.md + screenshots/GIF in the README.**
+
 ## 🚀 Future Ideas (Pending)
 
-- **On-Screen Keyboard:** Implement an LVGL keyboard to enter WiFi credentials dynamically without hardcoding them in `carusos_config.h`.
+- **On-Screen Keyboard:** Implement an LVGL keyboard to enter WiFi credentials dynamically without hardcoding them in `secrets.h`.
+- **WiFi config via UI + NVS:** Store credentials in NVS (`Preferences`) entered through the keyboard, removing the need to edit `secrets.h` for end users.
 - **File Explorer:** A UI app to list files on the FATFS partition or an external MicroSD card.
 - **Audio MP3 Player:** Extend the I2S driver to read `.mp3` or `.wav` files from the File System instead of generating a sine wave.
 - **Deep Sleep:** True battery-saving deep sleep mode with wake-on-touch capabilities.
+- **Inactivity timeout:** Auto-dim/sleep the backlight after N seconds without touch.
+- **PWM brightness control:** Replace the binary backlight on/off with PWM dimming.
+- **Notification / toast system:** Reusable status-bar notifications any app can raise.
 - **Bluetooth:** Add BLE support for notifications from a smartphone.
