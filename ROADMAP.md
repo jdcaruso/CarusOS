@@ -31,18 +31,29 @@
   - Explicit Over-The-Air (OTA) update mode for security.
   - Internal Flash FATFS mounting and formatting.
 
+- **Phase 11: Code Architecture** *(v0.34.0 – v0.35.0)*
+  - App Registry: apps are now a `g_apps[]` table (`id`, `icon`, `name`,
+    `enabled`, `build()`); adding one is "one entry + one function".
+  - `CARUSOS_SHOW_DISABLED_APPS` flag (hide vs grey-out disabled apps).
+  - Inter-core command queue: UI (Core 1) posts hardware/NVS actions
+    (WiFi/OTA/Telnet/BLE) to a FreeRTOS queue executed on Core 0.
+
+## 🎯 Current Focus
+
+- **Device ↔ Server connectivity (NEXT):** Connect the device to a backend
+  server — either a self-hosted machine or a cloud service. Open questions to
+  decide: transport (**MQTT** vs **WebSocket** vs **REST polling**), what data
+  flows (telemetry up / commands down / both), auth, and whether the server is
+  local or cloud. This is the next big feature to design.
+
+> Pending hardware test: **v0.34.0** (app registry) and **v0.35.0** (inter-core
+> queue) compile clean but still need to be flashed and verified on the device.
+
 ## 🏗️ Architecture & Infrastructure
 
 Improvements that make CarusOS a more "real" OS and an easier project to
 contribute to.
 
-- **App Registry (in progress):** Replace the hard-coded `switch(app_id)` with a
-  table of apps (`id`, `icon`, `name`, `enabled`, `build()`). Adding an app
-  becomes "one entry + one function" instead of editing the core in several
-  places. *(See `ui_core.cpp` and the "How to add an app" section in `CLAUDE.md`.)*
-- **Inter-core message queue:** Replace the `volatile` flags shared between the
-  UI (Core 1) and backend (Core 0) with a FreeRTOS queue. Scales better than
-  ad-hoc flags and avoids cross-thread access to WiFi/driver state.
 - **PlatformIO support:** Add a `platformio.ini` pinning board, build flags and
   library versions, so the project builds without hand-tuning Arduino IDE.
 - **CI build (GitHub Actions):** Compile on every push to catch breakage early —

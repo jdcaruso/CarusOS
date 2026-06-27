@@ -51,6 +51,9 @@ static void app_build_ota(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * 
 static void app_build_explorer(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label);
 static void app_build_options(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label);
 static void app_build_gallery(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label);
+#if ENABLE_APP_ANIM
+static void app_build_anim(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label);
+#endif
 
 static carusos_app_t g_apps[] = {
     { 0, LV_SYMBOL_PLUS,      TXT_APP_CALC_TITLE, true,                 app_build_calc },
@@ -63,6 +66,9 @@ static carusos_app_t g_apps[] = {
     { 7, LV_SYMBOL_DIRECTORY, "Archivos",         CARUSOS_APP_EXPLORER, app_build_explorer },
     { 8, LV_SYMBOL_SETTINGS,  "Opciones",         true,                 app_build_options },
     { 9, LV_SYMBOL_IMAGE,     "Galeria",          CARUSOS_APP_GALLERY,  app_build_gallery },
+#if ENABLE_APP_ANIM
+    { 10, LV_SYMBOL_PLAY,     "Animacion",        true,                 app_build_anim },
+#endif
 };
 static const int g_app_count = sizeof(g_apps) / sizeof(g_apps[0]);
 
@@ -382,6 +388,111 @@ static void app_build_gallery(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_
     }, 100, NULL); // Poll every 100ms
 }
 
+#if ENABLE_APP_ANIM
+// ---------------------------------------------------------------------------
+// Animation app: a blocky "8-bit" sprite that bounces around the screen and
+// cycles colour on every wall hit. Pure lv_anim/lv_timer — no assets, no PSRAM,
+// no network. The whole thing is compiled out when ENABLE_APP_ANIM is 0.
+// ---------------------------------------------------------------------------
+
+#define ANIM_SPRITE_SIZE 64
+#define ANIM_AREA_TOP    55   // keep the sprite below the 50px top bar
+
+typedef struct {
+    lv_obj_t *   sprite;
+    lv_timer_t * timer;
+    int x, y;       // top-left position
+    int vx, vy;     // velocity (px per tick)
+    int color_idx;
+} anim_state_t;
+
+static const uint32_t ANIM_COLORS[] = {
+    0xFF004D, 0x00B543, 0x1763CF, 0xFFA300, 0x00E436, 0xFF77A8
+};
+#define ANIM_NUM_COLORS (sizeof(ANIM_COLORS) / sizeof(ANIM_COLORS[0]))
+
+static void anim_tick_cb(lv_timer_t * t) {
+    anim_state_t * st = (anim_state_t *)lv_timer_get_user_data(t);
+    lv_obj_t * scr = lv_obj_get_screen(st->sprite);
+    int w = lv_obj_get_width(scr);
+    int h = lv_obj_get_height(scr);
+
+    st->x += st->vx;
+    st->y += st->vy;
+
+    bool bounced = false;
+    if (st->x <= 0)                    { st->x = 0;                    st->vx = -st->vx; bounced = true; }
+    if (st->x >= w - ANIM_SPRITE_SIZE) { st->x = w - ANIM_SPRITE_SIZE; st->vx = -st->vx; bounced = true; }
+    if (st->y <= ANIM_AREA_TOP)        { st->y = ANIM_AREA_TOP;        st->vy = -st->vy; bounced = true; }
+    if (st->y >= h - ANIM_SPRITE_SIZE) { st->y = h - ANIM_SPRITE_SIZE; st->vy = -st->vy; bounced = true; }
+
+    if (bounced) {
+        st->color_idx = (st->color_idx + 1) % ANIM_NUM_COLORS;
+        lv_obj_set_style_bg_color(st->sprite, lv_color_hex(ANIM_COLORS[st->color_idx]), 0);
+    }
+
+    lv_obj_set_pos(st->sprite, st->x, st->y);
+}
+
+// Fires when the app screen is destroyed (Back button). Kills the timer so it
+// never ticks on a freed sprite, and frees the state.
+static void anim_cleanup_cb(lv_event_t * e) {
+    anim_state_t * st = (anim_state_t *)lv_event_get_user_data(e);
+    if (st) {
+        if (st->timer) lv_timer_delete(st->timer);
+        lv_free(st);
+    }
+}
+
+// Helper: build a small black "pixel" (eye / mouth) as a child of the sprite.
+static lv_obj_t * anim_make_pixel(lv_obj_t * parent, int size, lv_align_t align, int x, int y) {
+    lv_obj_t * px = lv_obj_create(parent);
+    lv_obj_set_size(px, size, size);
+    lv_obj_align(px, align, x, y);
+    lv_obj_set_style_radius(px, 0, 0);
+    lv_obj_set_style_border_width(px, 0, 0);
+    lv_obj_set_style_pad_all(px, 0, 0);
+    lv_obj_set_style_bg_color(px, lv_color_hex(0x000000), 0);
+    lv_obj_set_scrollbar_mode(px, LV_SCROLLBAR_MODE_OFF);
+    return px;
+}
+
+static void app_build_anim(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label) {
+    lv_label_set_text(title_label, "Animacion");
+    lv_obj_add_flag(content, LV_OBJ_FLAG_HIDDEN); // hide the default content label
+
+    anim_state_t * st = (anim_state_t *)lv_malloc(sizeof(anim_state_t));
+    if (!st) return;
+    st->x = 30;
+    st->y = ANIM_AREA_TOP + 30;
+    st->vx = 4;
+    st->vy = 3;
+    st->color_idx = 0;
+
+    // The sprite: a chunky square with a hard black border = blocky 8-bit look.
+    st->sprite = lv_obj_create(app_screen);
+    lv_obj_set_size(st->sprite, ANIM_SPRITE_SIZE, ANIM_SPRITE_SIZE);
+    lv_obj_set_style_radius(st->sprite, 0, 0);
+    lv_obj_set_style_border_width(st->sprite, 4, 0);
+    lv_obj_set_style_border_color(st->sprite, lv_color_hex(0x000000), 0);
+    lv_obj_set_style_bg_color(st->sprite, lv_color_hex(ANIM_COLORS[0]), 0);
+    lv_obj_set_style_pad_all(st->sprite, 0, 0);
+    lv_obj_set_scrollbar_mode(st->sprite, LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_pos(st->sprite, st->x, st->y);
+
+    // A simple face so it reads as a character.
+    anim_make_pixel(st->sprite, 10, LV_ALIGN_TOP_LEFT,  12, 14); // left eye
+    anim_make_pixel(st->sprite, 10, LV_ALIGN_TOP_RIGHT, -12, 14); // right eye
+    anim_make_pixel(st->sprite, 28, LV_ALIGN_BOTTOM_MID, 0, -10); // mouth
+
+    // ~30ms tick = ~33 FPS, smooth without hammering the CPU.
+    st->timer = lv_timer_create(anim_tick_cb, 30, st);
+
+    // Tie cleanup to the screen's lifetime (survives any exit path).
+    lv_obj_add_event_cb(app_screen, anim_cleanup_cb, LV_EVENT_DELETE, st);
+}
+#endif // ENABLE_APP_ANIM
+
 // ---------------------------------------------------------------------------
 // Window chrome + launcher
 // ---------------------------------------------------------------------------
@@ -588,6 +699,9 @@ static void create_main_screen() {
     // Populate Desktop Apps
     add_app_icon(app_grid, 0); // Calculator
     add_app_icon(app_grid, 9); // Web Gallery
+#if ENABLE_APP_ANIM
+    add_app_icon(app_grid, 10); // Animation
+#endif
     add_app_icon(app_grid, 3); // Settings
 }
 

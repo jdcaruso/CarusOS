@@ -5,6 +5,7 @@
 #include <time.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <freertos/queue.h>
 #include <math.h>
 
 #if CARUSOS_USE_OTA
@@ -49,7 +50,36 @@ static volatile bool play_audio = false;
 static volatile int audio_volume = 70; // 0-100
 static volatile bool ota_enabled = false;
 
-void backend_enable_ota() {
+// ---------------------------------------------------------------------------
+// UI -> Backend command queue
+// ---------------------------------------------------------------------------
+// The UI runs on Core 1. Actions that touch WiFi/OTA/Telnet/BLE/NVS hardware
+// must run on Core 0, so the UI posts commands here and Task_Backend executes
+// them. (Audio play/volume use the volatile flags above, which the Core 0 audio
+// task already reads directly.)
+typedef enum {
+    BCMD_WIFI_RECONNECT,
+    BCMD_OTA_ENABLE,
+    BCMD_SET_TELNET,
+    BCMD_SET_ANIMATIONS,
+    BCMD_SET_BLUETOOTH,
+} backend_cmd_type_t;
+
+typedef struct {
+    backend_cmd_type_t type;
+    int arg;
+} backend_cmd_t;
+
+static QueueHandle_t backend_queue = NULL;
+
+// Core-0 command handlers
+static void do_enable_ota();
+static void do_wifi_reconnect();
+static void do_set_telnet(bool enable);
+static void do_set_animations(bool enable);
+static void do_set_bluetooth(bool enable);
+
+static void do_enable_ota() {
     if (!ota_enabled && wifi_connected) {
 #if CARUSOS_USE_OTA
         ArduinoOTA.setHostname(CARUSOS_OTA_HOSTNAME);
@@ -75,6 +105,11 @@ void backend_enable_ota() {
         ota_enabled = true;
         Serial.println("[OTA] Service Started.");
     }
+}
+
+void backend_enable_ota() {
+    backend_cmd_t cmd = { BCMD_OTA_ENABLE, 0 };
+    if (backend_queue) xQueueSend(backend_queue, &cmd, 0);
 }
 
 String backend_get_ip() {
@@ -223,6 +258,18 @@ static void Task_Backend(void *pvParameters) {
     }
 
     while (1) {
+        // Drain UI commands (executed here on Core 0)
+        backend_cmd_t cmd;
+        while (xQueueReceive(backend_queue, &cmd, 0) == pdTRUE) {
+            switch (cmd.type) {
+                case BCMD_WIFI_RECONNECT:  do_wifi_reconnect();             break;
+                case BCMD_OTA_ENABLE:      do_enable_ota();                 break;
+                case BCMD_SET_TELNET:      do_set_telnet(cmd.arg != 0);     break;
+                case BCMD_SET_ANIMATIONS:  do_set_animations(cmd.arg != 0); break;
+                case BCMD_SET_BLUETOOTH:   do_set_bluetooth(cmd.arg != 0);  break;
+            }
+        }
+
         bool current_status = (WiFi.status() == WL_CONNECTED);
         
         if (current_status != wifi_connected) {
@@ -266,6 +313,9 @@ static void Task_Backend(void *pvParameters) {
 }
 
 void backend_core_init() {
+    // Queue for UI -> backend commands (executed on Core 0)
+    backend_queue = xQueueCreate(10, sizeof(backend_cmd_t));
+
     // Create backend task on Core 0
     xTaskCreatePinnedToCore(
         Task_Backend,
@@ -308,7 +358,12 @@ bool backend_get_telnet() {
 }
 
 void backend_set_telnet(bool enable) {
-    runtime_use_telnet = enable;
+    runtime_use_telnet = enable; // immediate, so getters and the accept loop see it
+    backend_cmd_t cmd = { BCMD_SET_TELNET, enable ? 1 : 0 };
+    if (backend_queue) xQueueSend(backend_queue, &cmd, 0);
+}
+
+static void do_set_telnet(bool enable) {
     preferences.putBool("telnet", enable);
     if (enable) {
         telnetServer.begin();
@@ -324,6 +379,11 @@ bool backend_get_animations() {
 
 void backend_set_animations(bool enable) {
     runtime_use_animations = enable;
+    backend_cmd_t cmd = { BCMD_SET_ANIMATIONS, enable ? 1 : 0 };
+    if (backend_queue) xQueueSend(backend_queue, &cmd, 0);
+}
+
+static void do_set_animations(bool enable) {
     preferences.putBool("anim", enable);
 }
 
@@ -401,6 +461,11 @@ void* backend_download_file(const char* url, size_t* out_size) {
 }
 
 void backend_wifi_reconnect() {
+    backend_cmd_t cmd = { BCMD_WIFI_RECONNECT, 0 };
+    if (backend_queue) xQueueSend(backend_queue, &cmd, 0);
+}
+
+static void do_wifi_reconnect() {
     Serial.println("[Backend] Manual WiFi Reconnect triggered.");
     WiFi.disconnect();
     // Reconnection is handled automatically in the while(1) loop of Task_Backend
@@ -413,6 +478,11 @@ bool backend_get_bluetooth() {
 
 void backend_set_bluetooth(bool enable) {
     runtime_use_bluetooth = enable;
+    backend_cmd_t cmd = { BCMD_SET_BLUETOOTH, enable ? 1 : 0 };
+    if (backend_queue) xQueueSend(backend_queue, &cmd, 0);
+}
+
+static void do_set_bluetooth(bool enable) {
     preferences.putBool("bt", enable);
 #if CARUSOS_USE_BLUETOOTH
     if (enable) {
