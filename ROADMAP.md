@@ -31,12 +31,14 @@
   - Explicit Over-The-Air (OTA) update mode for security.
   - Internal Flash FATFS mounting and formatting.
 
-- **Phase 11: Code Architecture** *(v0.34.0 – v0.35.0)*
+- **Phase 11: Code Architecture & first apps** *(v0.34.0 – v0.36.0)*
   - App Registry: apps are now a `g_apps[]` table (`id`, `icon`, `name`,
     `enabled`, `build()`); adding one is "one entry + one function".
   - `CARUSOS_SHOW_DISABLED_APPS` flag (hide vs grey-out disabled apps).
   - Inter-core command queue: UI (Core 1) posts hardware/NVS actions
     (WiFi/OTA/Telnet/BLE) to a FreeRTOS queue executed on Core 0.
+  - Animation app (`ENABLE_APP_ANIM`): code-driven LVGL sprite demo.
+  - Mic Test app (`ENABLE_APP_MIC_TEST`): ES7210 capture + live level meter.
 
 ## 🎯 Current Focus
 
@@ -59,20 +61,35 @@ contribute to.
 - **CI build (GitHub Actions):** Compile on every push to catch breakage early —
   the pragmatic equivalent of tests for embedded.
 - **CONTRIBUTING.md + screenshots/GIF in the README.**
-- **Config hygiene (pending):** `ENABLE_APP_GIF_DEMO` and `ENABLE_APP_MIC_TEST`
-  in `carusos_config.h` are defined but currently unused ("phantom" flags). Keep
-  for now; either implement the apps they imply or remove them. *(Mic Test is
-  planned — see below — which would give `ENABLE_APP_MIC_TEST` a real meaning.)*
+- **Config hygiene (pending):** `ENABLE_APP_GIF_DEMO` in `carusos_config.h` is
+  defined but unused (a "phantom" flag). Keep for now; either implement a GIF
+  app or remove it.
+- **Build-size discipline:** every optional feature must compile out completely
+  when its flag is 0 (zero flash/RAM). Track the compiled size per release —
+  the Arduino IDE prints `Sketch uses N bytes (X%)` after each build. Big-ticket
+  items to watch: BLE (~1 MB), PNG decoder, image/GIF assets.
+
+## 🧭 Onboard Hardware Not Yet Used
+
+The Waveshare ESP32-S3-Touch-LCD-4.3B has several chips we haven't exposed yet
+(confirmed by the board's `examples/` demos). Candidates for the basic feature
+suite:
+
+- **QMI8658 — 6-axis IMU (accelerometer + gyroscope).** Motion/tilt/orientation:
+  auto-rotate the screen, step counter, level/bubble, shake gestures, tilt games.
+- **PCF85063 — RTC (battery-backed real-time clock).** Keep the time without
+  WiFi/NTP; survives reboots. Today the clock only comes from NTP.
+- **AXP2101 — power management IC.** Battery voltage / charge state / current;
+  a battery indicator in the status bar, low-power warnings.
+- **microSD slot (SD_MMC).** External storage for files, audio, images — bigger
+  than the internal FATFS partition.
 
 ## 🚀 Future Ideas (Pending)
 
-- **Mic Test app (configurable):** A basic microphone app behind a config flag —
-  mic on/off plus a live input-level meter (bar that reacts to sound). The board
-  captures mic via the **ES7210 ADC** over I2S; an official driver exists in the
-  Waveshare `08_ES7210` example to port. Watch out for I2S peripheral/pin sharing
-  with the existing speaker (ES8311) path — likely make mic capture and audio
-  playback mutually exclusive.
-
+- **OTA: multiple update URLs (failover).** Check 2–3 update URLs in order so a
+  single host being down doesn't block updates. Store the list in `secrets.h` /
+  config; try each until one responds. *(Note: HTTP OTA update flow is not yet
+  hardware-tested.)*
 - **On-Screen Keyboard:** Implement an LVGL keyboard to enter WiFi credentials dynamically without hardcoding them in `secrets.h`.
 - **WiFi config via UI + NVS:** Store credentials in NVS (`Preferences`) entered through the keyboard, removing the need to edit `secrets.h` for end users.
 - **File Explorer:** A UI app to list files on the FATFS partition or an external MicroSD card.

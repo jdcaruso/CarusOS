@@ -80,6 +80,11 @@ Dependencies: LVGL 9.x, Arduino_GFX, SensorLib (GT911), ESP_I2S.
 ## Conventions
 
 - Feature flags live in `carusos_config.h`; gate optional code with `#if CARUSOS_USE_*`.
+- **Keep it small.** A disabled feature must compile out *completely* (zero
+  flash/RAM). For an app, gate all three with the same `#if`: the builder
+  function, the `g_apps[]` row, and the menu `add_app_icon()` call (see the
+  Animation / Mic Test apps). The Arduino IDE prints `Sketch uses N bytes (X%)`
+  after each build — watch the % on the 3 MB app partition.
 - User-facing strings go through `TXT_*` macros in `language.h` (keep EN + ES in sync).
 - Never commit credentials. `secrets.h` is gitignored; only `secrets.h.example`
   is tracked.
