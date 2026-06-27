@@ -1,5 +1,6 @@
 #include "carusos_config.h"
 #include "backend_core.h"
+#include "imu_qmi8658.h"
 #include "lvgl_port.h"
 #include "lv_conf.h"
 #include <lvgl.h>
@@ -16,6 +17,9 @@ static lv_obj_t * ntp_live_label = NULL; // For live NTP updates inside the app
 static lv_obj_t * sys_info_stats_label = NULL; // For live Sys Info updates
 static lv_obj_t * mic_level_bar = NULL; // Mic test level meter
 static lv_timer_t * mic_timer = NULL;   // Updates the mic level meter
+static lv_obj_t * imu_ball = NULL;      // IMU app: tilt ball
+static lv_obj_t * imu_box = NULL;       // IMU app: bounding box
+static lv_timer_t * imu_timer = NULL;   // Reads the IMU and moves the ball
 static lv_timer_t * boot_timer;
 static lv_timer_t * ui_poll_timer;
 static int boot_step = 0;
@@ -59,6 +63,9 @@ static void app_build_anim(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t *
 #if ENABLE_APP_MIC_TEST
 static void app_build_mic(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label);
 #endif
+#if ENABLE_APP_IMU
+static void app_build_imu(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label);
+#endif
 
 static carusos_app_t g_apps[] = {
     { 0, LV_SYMBOL_PLUS,      TXT_APP_CALC_TITLE, true,                 app_build_calc },
@@ -76,6 +83,9 @@ static carusos_app_t g_apps[] = {
 #endif
 #if ENABLE_APP_MIC_TEST
     { 11, LV_SYMBOL_AUDIO,    "Mic Test",         true,                 app_build_mic },
+#endif
+#if ENABLE_APP_IMU
+    { 12, LV_SYMBOL_GPS,      "Movimiento",       true,                 app_build_imu },
 #endif
 };
 static const int g_app_count = sizeof(g_apps) / sizeof(g_apps[0]);
@@ -106,6 +116,14 @@ static void app_back_event_cb(lv_event_t * e) {
             backend_mic_stop();
             if (mic_timer) { lv_timer_delete(mic_timer); mic_timer = NULL; }
             mic_level_bar = NULL;
+        }
+#endif
+#if ENABLE_APP_IMU
+        // Leaving the IMU app: tear down its timer
+        if (imu_ball != NULL) {
+            if (imu_timer) { lv_timer_delete(imu_timer); imu_timer = NULL; }
+            imu_ball = NULL;
+            imu_box = NULL;
         }
 #endif
         lv_obj_t * return_screen = (lv_obj_t *)lv_event_get_user_data(e);
@@ -225,6 +243,9 @@ static void app_build_settings(lv_obj_t * app_screen, lv_obj_t * content, lv_obj
     add_app_icon(app_grid, 8); // Options
 #if ENABLE_APP_MIC_TEST
     add_app_icon(app_grid, 11); // Mic Test
+#endif
+#if ENABLE_APP_IMU
+    add_app_icon(app_grid, 12); // IMU / Movimiento
 #endif
     add_app_icon(app_grid, 4); // Sleep
 }
@@ -547,6 +568,61 @@ static void app_build_mic(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * 
     mic_timer = lv_timer_create(mic_bar_update_cb, 100, NULL);
 }
 #endif // ENABLE_APP_MIC_TEST
+
+#if ENABLE_APP_IMU
+#define IMU_BOX_SIZE   300
+#define IMU_BALL_SIZE  44
+
+static void imu_tick_cb(lv_timer_t * t) {
+    if (imu_ball == NULL) return;
+    float ax, ay, az;
+    if (!imu_get_accel(ax, ay, az)) return;
+
+    // Tilt the board -> gravity shifts -> ball rolls "downhill".
+    // ax/ay are in g (~ -1..1 when tilted). Map to pixels within the box.
+    int range = (IMU_BOX_SIZE - IMU_BALL_SIZE) / 2 - 4;
+    int dx = (int)(ax * range);
+    int dy = (int)(-ay * range); // screen Y grows downward; invert so it feels natural
+    if (dx >  range) dx =  range;
+    if (dx < -range) dx = -range;
+    if (dy >  range) dy =  range;
+    if (dy < -range) dy = -range;
+    lv_obj_align(imu_ball, LV_ALIGN_CENTER, dx, dy);
+}
+
+static void app_build_imu(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label) {
+    lv_label_set_text(title_label, "Movimiento (IMU)");
+    lv_obj_add_flag(content, LV_OBJ_FLAG_HIDDEN); // hide the default content label
+
+    if (!imu_begin()) {
+        lv_obj_clear_flag(content, LV_OBJ_FLAG_HIDDEN);
+        lv_label_set_text(content, "IMU no detectado (QMI8658).");
+        lv_obj_center(content);
+        return;
+    }
+
+    // Bounding box
+    imu_box = lv_obj_create(app_screen);
+    lv_obj_set_size(imu_box, IMU_BOX_SIZE, IMU_BOX_SIZE);
+    lv_obj_align(imu_box, LV_ALIGN_CENTER, 0, 25);
+    lv_obj_set_style_bg_color(imu_box, lv_color_hex(0x101010), 0);
+    lv_obj_set_style_border_color(imu_box, lv_color_hex(0x00FF00), 0);
+    lv_obj_set_style_border_width(imu_box, 2, 0);
+    lv_obj_set_style_radius(imu_box, 8, 0);
+    lv_obj_clear_flag(imu_box, LV_OBJ_FLAG_SCROLLABLE);
+
+    // Ball (moves with tilt)
+    imu_ball = lv_obj_create(imu_box);
+    lv_obj_set_size(imu_ball, IMU_BALL_SIZE, IMU_BALL_SIZE);
+    lv_obj_set_style_radius(imu_ball, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(imu_ball, lv_color_hex(0x00FF00), 0);
+    lv_obj_set_style_border_width(imu_ball, 0, 0);
+    lv_obj_align(imu_ball, LV_ALIGN_CENTER, 0, 0);
+
+    // ~33 FPS read + move
+    imu_timer = lv_timer_create(imu_tick_cb, 30, NULL);
+}
+#endif // ENABLE_APP_IMU
 
 // ---------------------------------------------------------------------------
 // Window chrome + launcher

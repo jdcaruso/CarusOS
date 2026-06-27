@@ -6,7 +6,7 @@
 // Copy secrets.h.example to secrets.h and fill in your values.
 #include "secrets.h"
 
-#define CARUSOS_VERSION         "v0.36.0"
+#define CARUSOS_VERSION         "v0.37.0"
 #define CARUSOS_AUTHOR          "Javier D. Caruso"
 #define CARUSOS_SOURCE_DATE     "2026-06-27"
 #define CARUSOS_LANG_ES         1 // 1 for Spanish, 0 for English
@@ -50,4 +50,5 @@
 #define CARUSOS_USE_PNG         0 // 0: Disable PNG decoding (saves RAM/Flash), 1: Enable PNG decoding
 #define ENABLE_APP_GIF_DEMO     1
 #define ENABLE_APP_MIC_TEST     1
-#define ENABLE_APP_ANIM         1 // 0: App de animacion no se compila ni aparece. 1: Habilitada.
+#define ENABLE_APP_ANIM         0 // 0: App de animacion no se compila ni aparece. 1: Habilitada.
+#define ENABLE_APP_IMU          1 // 1: App de sensor de movimiento (IMU QMI8658). 0: no se compila.
