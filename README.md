@@ -1,6 +1,6 @@
 # CarusOS 📱
 
-![Version](https://img.shields.io/badge/version-v0.39.1-blue)
+![Version](https://img.shields.io/badge/version-v0.40.0-blue)
 ![Platform](https://img.shields.io/badge/platform-ESP32--S3-green)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 

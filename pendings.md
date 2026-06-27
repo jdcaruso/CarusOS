@@ -6,12 +6,6 @@ TODOs captured during sessions.
 
 ## 📝 To do
 
-- [ ] **Show the CarusOS version on the boot/splash screen.** Trivial and *not*
-  error-prone: `CARUSOS_VERSION` is a compile-time string macro from
-  `carusos_config.h`, already included everywhere — no runtime file loading needed.
-  Just render it on the boot/splash screen (boot code in `ui_core.cpp`).
-  *Deferred 2026-06-27.*
-
 - [ ] **Measure real per-feature flash cost (differential builds).** The README has a
   *source-size* table (real, but only the in-sketch driver files); add a complementary
   **measured flash-cost** table: build with a flag ON vs OFF and record the delta from

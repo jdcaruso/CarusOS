@@ -26,7 +26,7 @@ void my_log_cb(lv_log_level_t level, const char * buf) {
 void setup() {
   Serial.begin(115200);
   delay(1500); // Esperar a que el USB CDC se estabilice para evitar simbolos basura
-  Serial.println("\n\nBooting CarusOS...");
+  Serial.printf("\n\nBooting CarusOS %s...\n", CARUSOS_VERSION);
 
   // Initialize hardware and LVGL
   lvgl_port_init();

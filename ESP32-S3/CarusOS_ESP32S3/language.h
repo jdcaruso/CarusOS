@@ -3,7 +3,7 @@
 
 #if CARUSOS_LANG_ES
     #define TXT_BOOT_BOOTING "Arrancando CarusOS %s...\n"
-    #define TXT_BOOT_PSRAM   "Montando PSRAM... (4MB)\n"
+    #define TXT_BOOT_PSRAM   "Montando PSRAM... (8MB)\n"
     #define TXT_BOOT_PANEL   "Inicializando Panel RGB...\n"
     #define TXT_BOOT_START   "Iniciando Escritorio...\n"
     #define TXT_APP_CALC_TITLE "Calculadora"
@@ -21,7 +21,7 @@
     #define TXT_APP_SYSINFO_TITLE "Informacion del Sistema"
 #else
     #define TXT_BOOT_BOOTING "Booting CarusOS %s...\n"
-    #define TXT_BOOT_PSRAM   "Mounting PSRAM... (4MB)\n"
+    #define TXT_BOOT_PSRAM   "Mounting PSRAM... (8MB)\n"
     #define TXT_BOOT_PANEL   "Initializing RGB Panel...\n"
     #define TXT_BOOT_START   "Starting Desktop...\n"
     #define TXT_APP_CALC_TITLE "Calculator"

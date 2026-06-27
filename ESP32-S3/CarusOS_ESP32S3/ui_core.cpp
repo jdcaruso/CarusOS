@@ -264,13 +264,57 @@ static void app_build_settings(lv_obj_t * app_screen, lv_obj_t * content, lv_obj
 
 static void app_build_sysinfo(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label) {
     lv_label_set_text(title_label, TXT_APP_SYSINFO_TITLE);
-    lv_label_set_text(content, "");
+    lv_obj_add_flag(content, LV_OBJ_FLAG_HIDDEN);
 
-    sys_info_stats_label = lv_label_create(app_screen);
+    // Tabview filling the area below the 50px top bar.
+    lv_obj_t * tv = lv_tabview_create(app_screen);
+    lv_tabview_set_tab_bar_size(tv, 40);
+    lv_obj_set_size(tv, LV_PCT(100), 430); // 480 screen - 50 top bar
+    lv_obj_align(tv, LV_ALIGN_BOTTOM_MID, 0, 0);
+    lv_obj_set_style_bg_color(tv, lv_color_hex(0x1e1e1e), 0);
+
+    lv_obj_t * tab_sys = lv_tabview_add_tab(tv, "Sistema");
+    lv_obj_t * tab_hw  = lv_tabview_add_tab(tv, "Hardware");
+
+    // --- "Sistema" tab: live stats, refreshed by the poll timer ---
+    sys_info_stats_label = lv_label_create(tab_sys);
+    lv_obj_set_width(sys_info_stats_label, LV_PCT(100));
+    lv_label_set_long_mode(sys_info_stats_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_color(sys_info_stats_label, lv_color_hex(0xFFFFFF), 0);
     lv_obj_set_style_text_font(sys_info_stats_label, &lv_font_montserrat_14, 0);
     lv_label_set_text(sys_info_stats_label, "Loading stats...");
-    lv_obj_align(sys_info_stats_label, LV_ALIGN_CENTER, 0, 0);
+
+    // --- "Hardware" tab: chips (MCU read live, peripherals gated by flag) ---
+    lv_obj_t * hw = lv_label_create(tab_hw);
+    lv_obj_set_width(hw, LV_PCT(100));
+    lv_label_set_long_mode(hw, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_color(hw, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_font(hw, &lv_font_montserrat_14, 0);
+    lv_label_set_text_fmt(hw,
+        "MCU: %s rev %d\n"
+        "Cores: %d @ %d MHz\n"
+        "Flash: %d MB  |  PSRAM: %d MB\n\n"
+        "-- Perifericos --\n"
+        "Pantalla: ST7701 (RGB)\n"
+        "Touch: GT911 (I2C)\n"
+        "Expansor IO: XCA9554\n"
+#if CARUSOS_USE_AUDIO
+        "Audio: ES8311\n"
+#endif
+#if ENABLE_APP_MIC_TEST
+        "Mic ADC: ES7210\n"
+#endif
+#if ENABLE_APP_IMU
+        "IMU: QMI8658\n"
+#endif
+#if CARUSOS_USE_RTC
+        "RTC: PCF85063\n"
+#endif
+        "PMU: AXP2101",
+        ESP.getChipModel(), ESP.getChipRevision(),
+        ESP.getChipCores(), ESP.getCpuFreqMHz(),
+        (int)(ESP.getFlashChipSize() / (1024 * 1024)),
+        (int)(ESP.getPsramSize() / (1024 * 1024)));
 }
 
 static void app_build_ota(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label) {
