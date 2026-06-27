@@ -1,0 +1,19 @@
+# Secrets - never commit credentials
+secrets.h
+
+# Arduino / PlatformIO build artifacts
+build/
+*.bin
+*.elf
+*.map
+*.hex
+*.o
+*.a
+.pio/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
