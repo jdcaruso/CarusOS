@@ -42,6 +42,8 @@ bool backend_get_animations();
 void backend_set_animations(bool enable);
 bool backend_get_bluetooth();
 void backend_set_bluetooth(bool enable);
+bool backend_get_wifi_enabled();
+void backend_set_wifi_enabled(bool enable);
 
 // Network Utils
 void* backend_download_file(const char* url, size_t* out_size);
@@ -49,3 +51,4 @@ void backend_wifi_reconnect();
 
 // File System
 String backend_list_files();
+bool backend_format_fs(); // mount/format on demand (never at boot)

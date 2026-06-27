@@ -19,6 +19,7 @@ Preferences preferences;
 bool runtime_use_telnet = true;
 bool runtime_use_animations = false;
 bool runtime_use_bluetooth = false;
+bool runtime_wifi_enabled = true;
 
 #if CARUSOS_USE_BLUETOOTH
 #include <BLEDevice.h>
@@ -34,6 +35,7 @@ WiFiClient telnetClient;
 #if CARUSOS_USE_FS
 #include <FFat.h>
 #include <esp_partition.h>
+static volatile bool fs_mounted = false; // true only after a successful FFat mount
 #endif
 
 #if CARUSOS_USE_AUDIO
@@ -65,6 +67,7 @@ typedef enum {
     BCMD_SET_TELNET,
     BCMD_SET_ANIMATIONS,
     BCMD_SET_BLUETOOTH,
+    BCMD_SET_WIFI,
 } backend_cmd_type_t;
 
 typedef struct {
@@ -80,6 +83,7 @@ static void do_wifi_reconnect();
 static void do_set_telnet(bool enable);
 static void do_set_animations(bool enable);
 static void do_set_bluetooth(bool enable);
+static void do_set_wifi(bool enable);
 
 static void do_enable_ota() {
     if (!ota_enabled && wifi_connected) {
@@ -124,12 +128,24 @@ String backend_get_ip() {
 String backend_list_files() {
     String output = "";
 #if CARUSOS_USE_FS
+    // --- DEBUG instrumentation (v0.40 crash hunt). Remove once fixed. ---
+    Serial.printf("[FS] list_files: core=%d stackHWM=%u fs_mounted=%d\n",
+                  xPortGetCoreID(), uxTaskGetStackHighWaterMark(NULL), (int)fs_mounted);
+
     const esp_partition_t* fat_part = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, NULL);
+    Serial.printf("[FS] partition=%p\n", (void*)fat_part);
     if (fat_part == NULL) {
         return "ERROR: FAT Partition not found.\nCheck Arduino IDE settings.";
     }
 
+    // Guard: never touch FFat unless it actually mounted (avoids a null deref).
+    if (!fs_mounted) {
+        return "FS no montada.\nToca Formatear para inicializarla.";
+    }
+
+    Serial.println("[FS] opening root...");
     File root = FFat.open("/");
+    Serial.printf("[FS] root opened, valid=%d\n", (bool)root);
     if (!root) {
         return "ERROR: Failed to open root directory.";
     }
@@ -137,14 +153,18 @@ String backend_list_files() {
         return "ERROR: Root is not a directory.";
     }
 
+    Serial.println("[FS] iterating...");
     File file = root.openNextFile();
     while (file) {
+        const char * nm = file.name();
+        Serial.printf("[FS] entry name=%p dir=%d\n", (const void*)nm, file.isDirectory());
         if (!file.isDirectory()) {
-            output += String(file.name()) + " - " + String(file.size() / 1024) + " KB\n";
+            output += String(nm ? nm : "?") + " - " + String(file.size() / 1024) + " KB\n";
         }
         file = root.openNextFile();
     }
-    
+    Serial.println("[FS] iteration done.");
+
     if (output == "") {
         output = "Disk is empty.";
     }
@@ -152,6 +172,19 @@ String backend_list_files() {
     output = "File System Disabled in Config.";
 #endif
     return output;
+}
+
+bool backend_format_fs() {
+#if CARUSOS_USE_FS
+    // Mount, formatting the partition if needed. DELIBERATE user action only -
+    // never call this at boot (a slow format there can trip the watchdog).
+    Serial.println("[Backend] Formatting/mounting FFat (on demand)...");
+    fs_mounted = FFat.begin(true);
+    Serial.printf("[Backend] FFat format result: %s\n", fs_mounted ? "OK" : "FAIL");
+    return fs_mounted;
+#else
+    return false;
+#endif
 }
 
 #if CARUSOS_USE_AUDIO
@@ -251,9 +284,24 @@ static void Task_Backend(void *pvParameters) {
     xTaskCreatePinnedToCore(Task_Audio, "TaskAudio", 8192, NULL, 1, &TaskAudio, 0);
 #endif
 
-    Serial.println("[Backend] Starting WiFi Connection...");
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    // Load persisted settings (NVS) before bringing up WiFi.
+    preferences.begin("carusos", false);
+    runtime_use_telnet     = preferences.getBool("telnet", true);
+    runtime_use_animations = preferences.getBool("anim", false);
+    runtime_use_bluetooth  = preferences.getBool("bt", false);
+    runtime_wifi_enabled   = preferences.getBool("wifi", true);
+    Serial.printf("[NVS] loaded: wifi=%d telnet=%d anim=%d bt=%d\n",
+                  (int)runtime_wifi_enabled, (int)runtime_use_telnet,
+                  (int)runtime_use_animations, (int)runtime_use_bluetooth);
+
+    if (runtime_wifi_enabled) {
+        Serial.println("[Backend] Starting WiFi Connection...");
+        WiFi.mode(WIFI_STA);
+        WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    } else {
+        Serial.println("[Backend] WiFi disabled (saved setting).");
+        WiFi.mode(WIFI_OFF);
+    }
 
 #if CARUSOS_USE_FS
     Serial.println("[Backend] Checking for FAT partition...");
@@ -265,18 +313,17 @@ static void Task_Backend(void *pvParameters) {
         Serial.println("[Backend] To fix this, change Partition Scheme in Arduino IDE.");
     } else {
         Serial.println("[Backend] Mounting FFat...");
-        if (FFat.begin(true)) { // true = format if mount fails
+        // NOTE: begin(false) = DO NOT auto-format at boot. A boot-time format of
+        // the large FAT partition is slow and can trip the task watchdog, which
+        // caused a reboot loop before. Format must be an explicit user action.
+        fs_mounted = FFat.begin(false);
+        if (fs_mounted) {
             Serial.println("[Backend] FFat Mounted.");
         } else {
-            Serial.println("[Backend] FFat Mount Failed.");
+            Serial.println("[Backend] FFat not mounted (unformatted?). Use an explicit format action.");
         }
     }
 #endif
-
-    preferences.begin("carusos", false);
-    runtime_use_telnet = preferences.getBool("telnet", true);
-    runtime_use_animations = preferences.getBool("anim", false);
-    runtime_use_bluetooth = preferences.getBool("bt", false);
 
 #if CARUSOS_USE_RTC
     // Seed the system clock from the battery-backed RTC so the time is right
@@ -301,7 +348,8 @@ static void Task_Backend(void *pvParameters) {
     }
 #endif
 
-    if (runtime_use_telnet) {
+    // Telnet needs the network stack, so only start it when WiFi is enabled.
+    if (runtime_use_telnet && runtime_wifi_enabled) {
         telnetServer.begin();
     }
 
@@ -315,6 +363,7 @@ static void Task_Backend(void *pvParameters) {
                 case BCMD_SET_TELNET:      do_set_telnet(cmd.arg != 0);     break;
                 case BCMD_SET_ANIMATIONS:  do_set_animations(cmd.arg != 0); break;
                 case BCMD_SET_BLUETOOTH:   do_set_bluetooth(cmd.arg != 0);  break;
+                case BCMD_SET_WIFI:        do_set_wifi(cmd.arg != 0);       break;
             }
         }
 
@@ -333,7 +382,7 @@ static void Task_Backend(void *pvParameters) {
 #endif
             } else {
                 Serial.println("[Backend] WiFi Disconnected.");
-                WiFi.begin(WIFI_SSID, WIFI_PASSWORD); // Reconnect
+                if (runtime_wifi_enabled) WiFi.begin(WIFI_SSID, WIFI_PASSWORD); // Reconnect
             }
         }
 
@@ -363,7 +412,7 @@ static void Task_Backend(void *pvParameters) {
             vTaskDelay(pdMS_TO_TICKS(50)); // Poll every 50ms normally
         }
 
-        if (runtime_use_telnet) {
+        if (runtime_use_telnet && runtime_wifi_enabled) {
             if (telnetServer.hasClient()) {
                 if (!telnetClient || !telnetClient.connected()) {
                     if (telnetClient) telnetClient.stop();
@@ -437,7 +486,7 @@ void backend_set_telnet(bool enable) {
 
 static void do_set_telnet(bool enable) {
     preferences.putBool("telnet", enable);
-    if (enable) {
+    if (enable && runtime_wifi_enabled) {
         telnetServer.begin();
     } else {
         if (telnetClient) telnetClient.stop();
@@ -542,6 +591,31 @@ static void do_wifi_reconnect() {
     WiFi.disconnect();
     // Reconnection is handled automatically in the while(1) loop of Task_Backend
     // because WiFi.status() will return false, triggering WiFi.begin()
+}
+
+void backend_set_wifi_enabled(bool enable) {
+    runtime_wifi_enabled = enable; // immediate, so the reconnect loop honors it
+    backend_cmd_t cmd = { BCMD_SET_WIFI, enable ? 1 : 0 };
+    if (backend_queue) xQueueSend(backend_queue, &cmd, 0);
+}
+
+bool backend_get_wifi_enabled() {
+    return runtime_wifi_enabled;
+}
+
+static void do_set_wifi(bool enable) {
+    preferences.putBool("wifi", enable);
+    if (enable) {
+        WiFi.mode(WIFI_STA);
+        WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+        if (runtime_use_telnet) telnetServer.begin(); // network is back: telnet can start
+    } else {
+        // Tear down telnet before the network goes away.
+        if (telnetClient) telnetClient.stop();
+        telnetServer.end();
+        WiFi.disconnect(true);
+        WiFi.mode(WIFI_OFF);
+    }
 }
 
 bool backend_get_bluetooth() {

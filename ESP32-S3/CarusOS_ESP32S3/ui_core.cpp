@@ -18,6 +18,7 @@ static lv_obj_t * sys_info_stats_label = NULL; // For live Sys Info updates
 static lv_obj_t * mic_level_bar = NULL; // Mic test level meter
 static lv_timer_t * mic_timer = NULL;   // Updates the mic level meter
 static lv_obj_t * datetime_date_label = NULL; // Date & Time app: date line
+static lv_obj_t * fs_list_label = NULL;        // File Explorer: file list
 static lv_obj_t * imu_ball = NULL;      // IMU app: tilt ball
 static lv_obj_t * imu_box = NULL;       // IMU app: bounding box
 static lv_timer_t * imu_timer = NULL;   // Reads the IMU and moves the ball
@@ -110,6 +111,7 @@ static void app_back_event_cb(lv_event_t * e) {
         ntp_live_label = NULL; // Clear pointer when leaving NTP app
         datetime_date_label = NULL; // Clear pointer when leaving Date & Time app
         sys_info_stats_label = NULL; // Clear pointer when leaving Sys Info app
+        fs_list_label = NULL; // Clear pointer when leaving File Explorer
         app_wifi_label = NULL;
         app_time_label = NULL;
 #if ENABLE_APP_MIC_TEST
@@ -290,19 +292,34 @@ static void app_build_ota(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * 
     lv_label_set_text_fmt(ota_label, "OTA Ready!\nIP: %s", backend_get_ip().c_str());
 }
 
+static void fs_format_event_cb(lv_event_t * e) {
+    if (fs_list_label == NULL) return;
+    lv_label_set_text(fs_list_label, "Formateando..."); // (UI freezes briefly during format)
+    bool ok = backend_format_fs();
+    lv_label_set_text(fs_list_label, ok ? backend_list_files().c_str()
+                                        : "Formato fallo.\nRevisa el esquema de particion (FATFS).");
+}
+
 static void app_build_explorer(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label) {
-    lv_label_set_text(title_label, "Explorador");
-    lv_label_set_text(content, "");
+    lv_label_set_text(title_label, "Archivos");
+    lv_obj_add_flag(content, LV_OBJ_FLAG_HIDDEN);
 
-    lv_obj_t * fs_label = lv_label_create(app_screen);
-    lv_obj_set_width(fs_label, LV_PCT(90));
-    lv_label_set_long_mode(fs_label, LV_LABEL_LONG_SCROLL_CIRCULAR);
-    lv_obj_set_style_text_color(fs_label, lv_color_hex(0x00FF00), 0);
-    lv_obj_set_style_text_font(fs_label, &lv_font_montserrat_14, 0);
+    fs_list_label = lv_label_create(app_screen);
+    lv_obj_set_width(fs_list_label, LV_PCT(90));
+    lv_label_set_long_mode(fs_list_label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_color(fs_list_label, lv_color_hex(0x00FF00), 0);
+    lv_obj_set_style_text_font(fs_list_label, &lv_font_montserrat_14, 0);
+    lv_label_set_text(fs_list_label, backend_list_files().c_str());
+    lv_obj_align(fs_list_label, LV_ALIGN_TOP_MID, 0, 70);
 
-    String files = backend_list_files();
-    lv_label_set_text(fs_label, files.c_str());
-    lv_obj_align(fs_label, LV_ALIGN_TOP_MID, 0, 80);
+    // On-demand format (deliberate; never runs at boot)
+    lv_obj_t * fmt_btn = lv_button_create(app_screen);
+    lv_obj_set_size(fmt_btn, 170, 44);
+    lv_obj_align(fmt_btn, LV_ALIGN_BOTTOM_MID, 0, -10);
+    lv_obj_add_event_cb(fmt_btn, fs_format_event_cb, LV_EVENT_CLICKED, NULL);
+    lv_obj_t * fmt_lbl = lv_label_create(fmt_btn);
+    lv_label_set_text(fmt_lbl, LV_SYMBOL_SD_CARD " Formatear");
+    lv_obj_center(fmt_lbl);
 }
 
 static void app_build_options(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label) {
@@ -317,6 +334,23 @@ static void app_build_options(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_
     lv_obj_set_style_text_color(cont, lv_color_hex(0xFFFFFF), 0);
     lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_all(cont, 10, 0);
+
+    // WiFi Switch (persisted in NVS)
+    lv_obj_t * wifi_cont = lv_obj_create(cont);
+    lv_obj_set_size(wifi_cont, LV_PCT(100), 60);
+    lv_obj_set_flex_flow(wifi_cont, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(wifi_cont, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_border_width(wifi_cont, 0, 0);
+
+    lv_obj_t * wifi_opt_label = lv_label_create(wifi_cont);
+    lv_label_set_text(wifi_opt_label, "WiFi");
+
+    lv_obj_t * wifi_sw = lv_switch_create(wifi_cont);
+    if (backend_get_wifi_enabled()) lv_obj_add_state(wifi_sw, LV_STATE_CHECKED);
+    lv_obj_add_event_cb(wifi_sw, [](lv_event_t * e) {
+        lv_obj_t * sw = (lv_obj_t *)lv_event_get_target(e);
+        backend_set_wifi_enabled(lv_obj_has_state(sw, LV_STATE_CHECKED));
+    }, LV_EVENT_VALUE_CHANGED, NULL);
 
     // Telnet Switch
     lv_obj_t * telnet_cont = lv_obj_create(cont);
@@ -683,7 +717,9 @@ static void create_app_window(carusos_app_t * app, lv_obj_t * return_screen) {
 
     // Build the app-specific UI
     if (app && app->build) {
+        Serial.printf("[UI] Building app id=%d (%s)\n", app->id, app->name);
         app->build(app_screen, content, title_label);
+        Serial.println("[UI] Build done.");
     }
 
     // Transition
@@ -696,6 +732,7 @@ static void app_launcher_event_cb(lv_event_t * e) {
     lv_event_code_t code = lv_event_get_code(e);
     if(code == LV_EVENT_CLICKED) {
         int app_id = (int)(intptr_t)lv_event_get_user_data(e);
+        Serial.printf("[UI] Launch app id=%d\n", app_id);
         carusos_app_t * app = app_by_id(app_id);
 
         if (!app || !app->enabled) return; // Disabled apps do nothing
