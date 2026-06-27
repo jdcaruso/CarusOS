@@ -59,8 +59,19 @@ contribute to.
 - **CI build (GitHub Actions):** Compile on every push to catch breakage early —
   the pragmatic equivalent of tests for embedded.
 - **CONTRIBUTING.md + screenshots/GIF in the README.**
+- **Config hygiene (pending):** `ENABLE_APP_GIF_DEMO` and `ENABLE_APP_MIC_TEST`
+  in `carusos_config.h` are defined but currently unused ("phantom" flags). Keep
+  for now; either implement the apps they imply or remove them. *(Mic Test is
+  planned — see below — which would give `ENABLE_APP_MIC_TEST` a real meaning.)*
 
 ## 🚀 Future Ideas (Pending)
+
+- **Mic Test app (configurable):** A basic microphone app behind a config flag —
+  mic on/off plus a live input-level meter (bar that reacts to sound). The board
+  captures mic via the **ES7210 ADC** over I2S; an official driver exists in the
+  Waveshare `08_ES7210` example to port. Watch out for I2S peripheral/pin sharing
+  with the existing speaker (ES8311) path — likely make mic capture and audio
+  playback mutually exclusive.
 
 - **On-Screen Keyboard:** Implement an LVGL keyboard to enter WiFi credentials dynamically without hardcoding them in `secrets.h`.
 - **WiFi config via UI + NVS:** Store credentials in NVS (`Preferences`) entered through the keyboard, removing the need to edit `secrets.h` for end users.

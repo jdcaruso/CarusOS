@@ -6,7 +6,7 @@
 // Copy secrets.h.example to secrets.h and fill in your values.
 #include "secrets.h"
 
-#define CARUSOS_VERSION         "v0.35.0"
+#define CARUSOS_VERSION         "v0.36.0"
 #define CARUSOS_AUTHOR          "Javier D. Caruso"
 #define CARUSOS_SOURCE_DATE     "2026-06-27"
 #define CARUSOS_LANG_ES         1 // 1 for Spanish, 0 for English

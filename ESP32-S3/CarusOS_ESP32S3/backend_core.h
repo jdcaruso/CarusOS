@@ -16,6 +16,11 @@ void backend_set_audio_state(bool play);
 void backend_set_audio_volume(int volume);
 int backend_get_audio_volume();
 
+// Microphone test (ES7210). Start/stop capture and read a 0-100 input level.
+void backend_mic_start();
+void backend_mic_stop();
+int backend_get_mic_level();
+
 // System Stats
 void backend_get_sys_info(uint32_t &free_heap, uint32_t &total_heap, 
                           uint32_t &free_psram, uint32_t &total_psram,

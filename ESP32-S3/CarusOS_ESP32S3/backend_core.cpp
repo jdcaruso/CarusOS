@@ -208,6 +208,38 @@ static void Task_Audio(void *pvParameters) {
 }
 #endif
 
+// ---------------------------------------------------------------------------
+// Microphone test (ES7210)
+// ---------------------------------------------------------------------------
+// The capture lives in mic_es7210.cpp. Here we only handle the speaker
+// hand-off: the mic and speaker share the I2S clock pins, so we release the
+// speaker (i2s.end()) before the mic starts.
+#include "mic_es7210.h"
+
+void backend_mic_start() {
+#if ENABLE_APP_MIC_TEST
+    play_audio = false;
+#if CARUSOS_USE_AUDIO
+    i2s.end(); // release the speaker I2S so the mic can own the shared clock pins
+#endif
+    mic_capture_start();
+#endif
+}
+
+void backend_mic_stop() {
+#if ENABLE_APP_MIC_TEST
+    mic_capture_stop();
+#endif
+}
+
+int backend_get_mic_level() {
+#if ENABLE_APP_MIC_TEST
+    return mic_capture_level();
+#else
+    return 0;
+#endif
+}
+
 static void Task_Backend(void *pvParameters) {
     // Wait a bit for the system to settle
     vTaskDelay(pdMS_TO_TICKS(2000));

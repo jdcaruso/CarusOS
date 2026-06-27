@@ -14,6 +14,8 @@ static lv_obj_t * app_time_label = NULL;
 static lv_obj_t * app_wifi_label = NULL;
 static lv_obj_t * ntp_live_label = NULL; // For live NTP updates inside the app
 static lv_obj_t * sys_info_stats_label = NULL; // For live Sys Info updates
+static lv_obj_t * mic_level_bar = NULL; // Mic test level meter
+static lv_timer_t * mic_timer = NULL;   // Updates the mic level meter
 static lv_timer_t * boot_timer;
 static lv_timer_t * ui_poll_timer;
 static int boot_step = 0;
@@ -54,6 +56,9 @@ static void app_build_gallery(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_
 #if ENABLE_APP_ANIM
 static void app_build_anim(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label);
 #endif
+#if ENABLE_APP_MIC_TEST
+static void app_build_mic(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label);
+#endif
 
 static carusos_app_t g_apps[] = {
     { 0, LV_SYMBOL_PLUS,      TXT_APP_CALC_TITLE, true,                 app_build_calc },
@@ -68,6 +73,9 @@ static carusos_app_t g_apps[] = {
     { 9, LV_SYMBOL_IMAGE,     "Galeria",          CARUSOS_APP_GALLERY,  app_build_gallery },
 #if ENABLE_APP_ANIM
     { 10, LV_SYMBOL_PLAY,     "Animacion",        true,                 app_build_anim },
+#endif
+#if ENABLE_APP_MIC_TEST
+    { 11, LV_SYMBOL_AUDIO,    "Mic Test",         true,                 app_build_mic },
 #endif
 };
 static const int g_app_count = sizeof(g_apps) / sizeof(g_apps[0]);
@@ -92,6 +100,14 @@ static void app_back_event_cb(lv_event_t * e) {
         sys_info_stats_label = NULL; // Clear pointer when leaving Sys Info app
         app_wifi_label = NULL;
         app_time_label = NULL;
+#if ENABLE_APP_MIC_TEST
+        // Leaving the Mic Test app: stop capture and tear down its timer
+        if (mic_level_bar != NULL) {
+            backend_mic_stop();
+            if (mic_timer) { lv_timer_delete(mic_timer); mic_timer = NULL; }
+            mic_level_bar = NULL;
+        }
+#endif
         lv_obj_t * return_screen = (lv_obj_t *)lv_event_get_user_data(e);
         if (return_screen) {
             // Free Gallery image buffer if we are returning from App 9
@@ -207,6 +223,9 @@ static void app_build_settings(lv_obj_t * app_screen, lv_obj_t * content, lv_obj
     add_app_icon(app_grid, 7); // File Explorer
     add_app_icon(app_grid, 6); // OTA Update
     add_app_icon(app_grid, 8); // Options
+#if ENABLE_APP_MIC_TEST
+    add_app_icon(app_grid, 11); // Mic Test
+#endif
     add_app_icon(app_grid, 4); // Sleep
 }
 
@@ -492,6 +511,42 @@ static void app_build_anim(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t *
     lv_obj_add_event_cb(app_screen, anim_cleanup_cb, LV_EVENT_DELETE, st);
 }
 #endif // ENABLE_APP_ANIM
+
+#if ENABLE_APP_MIC_TEST
+static void mic_switch_event_cb(lv_event_t * e) {
+    lv_obj_t * sw = (lv_obj_t *)lv_event_get_target(e);
+    if (lv_obj_has_state(sw, LV_STATE_CHECKED)) backend_mic_start();
+    else                                        backend_mic_stop();
+}
+
+static void mic_bar_update_cb(lv_timer_t * t) {
+    if (mic_level_bar != NULL) {
+        lv_bar_set_value(mic_level_bar, backend_get_mic_level(), LV_ANIM_OFF);
+    }
+}
+
+static void app_build_mic(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label) {
+    lv_label_set_text(title_label, "Mic Test");
+    lv_label_set_text(content, "Activa el mic y hace ruido:\nla barra deberia moverse.");
+    lv_obj_set_style_text_align(content, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_align(content, LV_ALIGN_TOP_MID, 0, 70);
+
+    // Mic ON/OFF switch
+    lv_obj_t * sw = lv_switch_create(app_screen);
+    lv_obj_align(sw, LV_ALIGN_CENTER, 0, -30);
+    lv_obj_add_event_cb(sw, mic_switch_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+
+    // Live input level meter
+    mic_level_bar = lv_bar_create(app_screen);
+    lv_obj_set_size(mic_level_bar, 320, 30);
+    lv_obj_align(mic_level_bar, LV_ALIGN_CENTER, 0, 40);
+    lv_bar_set_range(mic_level_bar, 0, 100);
+    lv_bar_set_value(mic_level_bar, 0, LV_ANIM_OFF);
+
+    // Refresh the meter ~10x/s while the app is open
+    mic_timer = lv_timer_create(mic_bar_update_cb, 100, NULL);
+}
+#endif // ENABLE_APP_MIC_TEST
 
 // ---------------------------------------------------------------------------
 // Window chrome + launcher
