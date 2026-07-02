@@ -1,0 +1,58 @@
+name: Build (arduino-cli)
+
+# Compile-check CarusOS on every push / PR. This does NOT flash hardware —
+# it only verifies the sketch builds cleanly for the target board, so a broken
+# commit is caught before anyone pulls it. No secrets are exposed: secrets.h is
+# gitignored and generated here from the tracked secrets.h.example (dummy values).
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'ESP32-S3/**'
+      - '.github/workflows/build.yml'
+  pull_request:
+    paths:
+      - 'ESP32-S3/**'
+      - '.github/workflows/build.yml'
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      SKETCH_DIR: ESP32-S3/CarusOS_ESP32S3
+      # Matches the Arduino IDE settings in the README:
+      # 16MB flash, 3MB APP / 9.9MB FATFS partition, OPI PSRAM, QIO 80MHz, 240 MHz.
+      FQBN: esp32:esp32:esp32s3:FlashSize=16M,PartitionScheme=app3M_fat9M_16MB,PSRAM=opi,FlashMode=qio,CPUFreq=240
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install arduino-cli
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install ESP32 core (3.3.10)
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls \
+            https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@3.3.10
+
+      - name: Install libraries
+        run: |
+          arduino-cli lib install "lvgl"
+          arduino-cli lib install "GFX Library for Arduino"
+          arduino-cli lib install "SensorLib"
+          # ESP_I2S ships with the ESP32 core (no separate install needed).
+
+      - name: Provide lv_conf.h to LVGL
+        # LVGL looks for lv_conf.h one directory above the library folder.
+        # The project keeps its own copy in the sketch; expose it to the build.
+        run: cp "$SKETCH_DIR/lv_conf.h" "$HOME/Arduino/libraries/lv_conf.h"
+
+      - name: Generate dummy secrets.h
+        run: cp "$SKETCH_DIR/secrets.h.example" "$SKETCH_DIR/secrets.h"
+
+      - name: Compile
+        run: arduino-cli compile --fqbn "$FQBN" --warnings all "$SKETCH_DIR"

@@ -3,6 +3,7 @@
 #if ENABLE_APP_IMU
 #include <Arduino.h>
 #include <Wire.h>
+#include "pin_config.h"
 #include "SensorQMI8658.hpp"  // from SensorLib (already used for the GT911 touch)
 #include "imu_qmi8658.h"
 
@@ -12,8 +13,8 @@ static bool gyro_on = false;
 
 bool imu_begin() {
     if (imu_ready) return true;
-    // Shared I2C bus on pins 47 (SDA) / 48 (SCL), already started by lvgl_port.
-    if (!qmi.begin(Wire, QMI8658_L_SLAVE_ADDRESS, 47, 48)) {
+    // Shared I2C bus (already started by lvgl_port).
+    if (!qmi.begin(Wire, QMI8658_L_SLAVE_ADDRESS, PIN_I2C_SDA, PIN_I2C_SCL)) {
         Serial.println("[IMU] QMI8658 not found!");
         return false;
     }

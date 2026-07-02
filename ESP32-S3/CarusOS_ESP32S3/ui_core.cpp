@@ -19,6 +19,7 @@ static lv_obj_t * mic_level_bar = NULL; // Mic test level meter
 static lv_timer_t * mic_timer = NULL;   // Updates the mic level meter
 static lv_obj_t * datetime_date_label = NULL; // Date & Time app: date line
 static lv_obj_t * fs_list_label = NULL;        // File Explorer: file list
+static lv_timer_t * fs_timer = NULL;           // File Explorer: polls Core-0 FS results
 static lv_obj_t * imu_ball = NULL;      // IMU app: tilt ball
 static lv_obj_t * imu_box = NULL;       // IMU app: bounding box
 static lv_timer_t * imu_timer = NULL;   // Reads the IMU and moves the ball
@@ -27,6 +28,24 @@ static lv_timer_t * ui_poll_timer;
 static int boot_step = 0;
 
 #include "language.h"
+
+// Stable app identifiers. The numeric values are used as icon-grid keys and
+// must stay in sync with the rows in g_apps[] below.
+typedef enum {
+    APP_CALC = 0,
+    APP_DATETIME,
+    APP_AUDIO,
+    APP_SETTINGS,
+    APP_SLEEP,
+    APP_SYSINFO,
+    APP_OTA,
+    APP_EXPLORER,
+    APP_OPTIONS,
+    APP_GALLERY,
+    APP_ANIM,
+    APP_MIC,
+    APP_IMU,
+} carusos_app_id_t;
 
 // ---------------------------------------------------------------------------
 // App Registry
@@ -70,24 +89,24 @@ static void app_build_imu(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * 
 #endif
 
 static carusos_app_t g_apps[] = {
-    { 0, LV_SYMBOL_PLUS,      TXT_APP_CALC_TITLE, true,                 app_build_calc },
-    { 1, LV_SYMBOL_BELL,      "Fecha y Hora",     true,                 app_build_ntp },
-    { 2, LV_SYMBOL_AUDIO,     "Audio",            CARUSOS_USE_AUDIO,    app_build_audio },
-    { 3, LV_SYMBOL_SETTINGS,  TXT_APP_INFO_TITLE, true,                 app_build_settings },
-    { 4, LV_SYMBOL_POWER,     TXT_SCREEN_SLEEP,   true,                 NULL /* action: Sleep */ },
-    { 5, LV_SYMBOL_FILE,      "Sys Info",         true,                 app_build_sysinfo },
-    { 6, LV_SYMBOL_DOWNLOAD,  "Update",           CARUSOS_USE_OTA,      app_build_ota },
-    { 7, LV_SYMBOL_DIRECTORY, "Archivos",         CARUSOS_APP_EXPLORER, app_build_explorer },
-    { 8, LV_SYMBOL_SETTINGS,  "Opciones",         true,                 app_build_options },
-    { 9, LV_SYMBOL_IMAGE,     "Galeria",          CARUSOS_APP_GALLERY,  app_build_gallery },
+    { APP_CALC,     LV_SYMBOL_PLUS,      TXT_APP_CALC_TITLE,   true,                 app_build_calc },
+    { APP_DATETIME, LV_SYMBOL_BELL,      TXT_APP_NTP_TITLE,    true,                 app_build_ntp },
+    { APP_AUDIO,    LV_SYMBOL_AUDIO,     TXT_APP_AUDIO_NAME,   CARUSOS_USE_AUDIO,    app_build_audio },
+    { APP_SETTINGS, LV_SYMBOL_SETTINGS,  TXT_APP_INFO_TITLE,   true,                 app_build_settings },
+    { APP_SLEEP,    LV_SYMBOL_POWER,     TXT_SCREEN_SLEEP,     true,                 NULL /* action: Sleep */ },
+    { APP_SYSINFO,  LV_SYMBOL_FILE,      TXT_APP_SYSINFO_NAME, true,                 app_build_sysinfo },
+    { APP_OTA,      LV_SYMBOL_DOWNLOAD,  TXT_APP_UPDATE_NAME,  CARUSOS_USE_OTA,      app_build_ota },
+    { APP_EXPLORER, LV_SYMBOL_DIRECTORY, TXT_APP_FILES_NAME,   CARUSOS_APP_EXPLORER, app_build_explorer },
+    { APP_OPTIONS,  LV_SYMBOL_SETTINGS,  TXT_APP_OPTIONS_NAME, true,                 app_build_options },
+    { APP_GALLERY,  LV_SYMBOL_IMAGE,     TXT_APP_GALLERY_NAME, CARUSOS_APP_GALLERY,  app_build_gallery },
 #if ENABLE_APP_ANIM
-    { 10, LV_SYMBOL_PLAY,     "Animacion",        true,                 app_build_anim },
+    { APP_ANIM,     LV_SYMBOL_PLAY,      TXT_APP_ANIM_NAME,    true,                 app_build_anim },
 #endif
 #if ENABLE_APP_MIC_TEST
-    { 11, LV_SYMBOL_AUDIO,    "Mic Test",         true,                 app_build_mic },
+    { APP_MIC,      LV_SYMBOL_AUDIO,     TXT_APP_MIC_NAME,     true,                 app_build_mic },
 #endif
 #if ENABLE_APP_IMU
-    { 12, LV_SYMBOL_GPS,      "Movimiento",       true,                 app_build_imu },
+    { APP_IMU,      LV_SYMBOL_GPS,       TXT_APP_IMU_NAME,     true,                 app_build_imu },
 #endif
 };
 static const int g_app_count = sizeof(g_apps) / sizeof(g_apps[0]);
@@ -247,19 +266,19 @@ static void app_build_settings(lv_obj_t * app_screen, lv_obj_t * content, lv_obj
     lv_obj_set_style_pad_row(app_grid, 20, 0);
     lv_obj_set_style_pad_column(app_grid, 20, 0);
 
-    add_app_icon(app_grid, 1); // NTP Sync
-    add_app_icon(app_grid, 2); // Audio
-    add_app_icon(app_grid, 5); // Sys Info
-    add_app_icon(app_grid, 7); // File Explorer
-    add_app_icon(app_grid, 6); // OTA Update
-    add_app_icon(app_grid, 8); // Options
+    add_app_icon(app_grid, APP_DATETIME); // Date & Time
+    add_app_icon(app_grid, APP_AUDIO);    // Audio
+    add_app_icon(app_grid, APP_SYSINFO);  // Sys Info
+    add_app_icon(app_grid, APP_EXPLORER); // File Explorer
+    add_app_icon(app_grid, APP_OTA);      // OTA Update
+    add_app_icon(app_grid, APP_OPTIONS);  // Options
 #if ENABLE_APP_MIC_TEST
-    add_app_icon(app_grid, 11); // Mic Test
+    add_app_icon(app_grid, APP_MIC);      // Mic Test
 #endif
 #if ENABLE_APP_IMU
-    add_app_icon(app_grid, 12); // IMU / Movimiento
+    add_app_icon(app_grid, APP_IMU);      // IMU / Motion
 #endif
-    add_app_icon(app_grid, 4); // Sleep
+    add_app_icon(app_grid, APP_SLEEP);    // Sleep
 }
 
 static void app_build_sysinfo(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label) {
@@ -273,8 +292,8 @@ static void app_build_sysinfo(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_
     lv_obj_align(tv, LV_ALIGN_BOTTOM_MID, 0, 0);
     lv_obj_set_style_bg_color(tv, lv_color_hex(0x1e1e1e), 0);
 
-    lv_obj_t * tab_sys = lv_tabview_add_tab(tv, "Sistema");
-    lv_obj_t * tab_hw  = lv_tabview_add_tab(tv, "Hardware");
+    lv_obj_t * tab_sys = lv_tabview_add_tab(tv, TXT_SYSINFO_TAB_SYS);
+    lv_obj_t * tab_hw  = lv_tabview_add_tab(tv, TXT_SYSINFO_TAB_HW);
 
     // --- "Sistema" tab: live stats, refreshed by the poll timer ---
     sys_info_stats_label = lv_label_create(tab_sys);
@@ -282,7 +301,7 @@ static void app_build_sysinfo(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_
     lv_label_set_long_mode(sys_info_stats_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_color(sys_info_stats_label, lv_color_hex(0xFFFFFF), 0);
     lv_obj_set_style_text_font(sys_info_stats_label, &lv_font_montserrat_14, 0);
-    lv_label_set_text(sys_info_stats_label, "Loading stats...");
+    lv_label_set_text(sys_info_stats_label, TXT_SYSINFO_LOADING);
 
     // --- "Hardware" tab: chips (MCU read live, peripherals gated by flag) ---
     lv_obj_t * hw = lv_label_create(tab_hw);
@@ -318,34 +337,48 @@ static void app_build_sysinfo(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_
 }
 
 static void app_build_ota(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label) {
-    lv_label_set_text(title_label, "System Update");
+    lv_label_set_text(title_label, TXT_APP_OTA_TITLE);
     lv_label_set_text(content, "");
 
     lv_obj_t * ota_label = lv_label_create(app_screen);
     lv_obj_set_style_text_color(ota_label, lv_color_hex(0x00FF00), 0);
     lv_obj_set_style_text_font(ota_label, &lv_font_montserrat_16, 0);
-    lv_label_set_text(ota_label, "Enabling OTA...");
+    lv_label_set_text(ota_label, TXT_OTA_ENABLING);
     lv_obj_align(ota_label, LV_ALIGN_CENTER, 0, -20);
 
     lv_obj_t * info_label = lv_label_create(app_screen);
     lv_obj_set_style_text_color(info_label, lv_color_hex(0xAAAAAA), 0);
-    lv_label_set_text(info_label, "Arduino IDE -> Ports -> Network Ports");
+    lv_label_set_text(info_label, TXT_OTA_HINT);
     lv_obj_align(info_label, LV_ALIGN_CENTER, 0, 20);
 
     backend_enable_ota(); // Start OTA service in background
-    lv_label_set_text_fmt(ota_label, "OTA Ready!\nIP: %s", backend_get_ip().c_str());
+    lv_label_set_text_fmt(ota_label, TXT_OTA_READY, backend_get_ip().c_str());
+}
+
+// The FFat work runs on Core 0 (see backend_core.cpp); here we only request it
+// and poll for the text result, so the UI core never blocks on the filesystem.
+static void fs_poll_cb(lv_timer_t * t) {
+    if (fs_list_label == NULL) return;
+    char buf[512];
+    if (backend_fs_poll(buf, sizeof(buf))) {
+        lv_label_set_text(fs_list_label, buf);
+    }
+}
+
+// Screen destroyed: stop polling and drop the (now dangling) label pointer.
+static void fs_cleanup_cb(lv_event_t * e) {
+    if (fs_timer) { lv_timer_delete(fs_timer); fs_timer = NULL; }
+    fs_list_label = NULL;
 }
 
 static void fs_format_event_cb(lv_event_t * e) {
     if (fs_list_label == NULL) return;
-    lv_label_set_text(fs_list_label, "Formateando..."); // (UI freezes briefly during format)
-    bool ok = backend_format_fs();
-    lv_label_set_text(fs_list_label, ok ? backend_list_files().c_str()
-                                        : "Formato fallo.\nRevisa el esquema de particion (FATFS).");
+    lv_label_set_text(fs_list_label, TXT_FS_FORMATTING);
+    backend_fs_request_format(); // Core 0 does the work; result arrives via fs_poll_cb
 }
 
 static void app_build_explorer(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label) {
-    lv_label_set_text(title_label, "Archivos");
+    lv_label_set_text(title_label, TXT_APP_FILES_NAME);
     lv_obj_add_flag(content, LV_OBJ_FLAG_HIDDEN);
 
     fs_list_label = lv_label_create(app_screen);
@@ -353,8 +386,12 @@ static void app_build_explorer(lv_obj_t * app_screen, lv_obj_t * content, lv_obj
     lv_label_set_long_mode(fs_list_label, LV_LABEL_LONG_WRAP);
     lv_obj_set_style_text_color(fs_list_label, lv_color_hex(0x00FF00), 0);
     lv_obj_set_style_text_font(fs_list_label, &lv_font_montserrat_14, 0);
-    lv_label_set_text(fs_list_label, backend_list_files().c_str());
+    lv_label_set_text(fs_list_label, TXT_FS_LOADING);
     lv_obj_align(fs_list_label, LV_ALIGN_TOP_MID, 0, 70);
+
+    backend_fs_request_list();                        // ask Core 0 for the listing
+    fs_timer = lv_timer_create(fs_poll_cb, 150, NULL); // poll for the result
+    lv_obj_add_event_cb(app_screen, fs_cleanup_cb, LV_EVENT_DELETE, NULL);
 
     // On-demand format (deliberate; never runs at boot)
     lv_obj_t * fmt_btn = lv_button_create(app_screen);
@@ -362,12 +399,12 @@ static void app_build_explorer(lv_obj_t * app_screen, lv_obj_t * content, lv_obj
     lv_obj_align(fmt_btn, LV_ALIGN_BOTTOM_MID, 0, -10);
     lv_obj_add_event_cb(fmt_btn, fs_format_event_cb, LV_EVENT_CLICKED, NULL);
     lv_obj_t * fmt_lbl = lv_label_create(fmt_btn);
-    lv_label_set_text(fmt_lbl, LV_SYMBOL_SD_CARD " Formatear");
+    lv_label_set_text(fmt_lbl, LV_SYMBOL_SD_CARD " " TXT_FS_FORMAT_BTN);
     lv_obj_center(fmt_lbl);
 }
 
 static void app_build_options(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label) {
-    lv_label_set_text(title_label, "Opciones");
+    lv_label_set_text(title_label, TXT_APP_OPTIONS_NAME);
     lv_label_set_text(content, "");
 
     lv_obj_t * cont = lv_obj_create(app_screen);
@@ -404,7 +441,7 @@ static void app_build_options(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_
     lv_obj_set_style_border_width(telnet_cont, 0, 0);
 
     lv_obj_t * telnet_label = lv_label_create(telnet_cont);
-    lv_label_set_text(telnet_label, "Telnet Logger (Port 23)");
+    lv_label_set_text(telnet_label, TXT_OPT_TELNET);
 
     lv_obj_t * telnet_sw = lv_switch_create(telnet_cont);
     if (backend_get_telnet()) lv_obj_add_state(telnet_sw, LV_STATE_CHECKED);
@@ -420,7 +457,7 @@ static void app_build_options(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_
     lv_obj_set_style_border_width(anim_cont, 0, 0);
 
     lv_obj_t * anim_label = lv_label_create(anim_cont);
-    lv_label_set_text(anim_label, "Animaciones UI");
+    lv_label_set_text(anim_label, TXT_OPT_ANIM);
 
     lv_obj_t * anim_sw = lv_switch_create(anim_cont);
     if (backend_get_animations()) lv_obj_add_state(anim_sw, LV_STATE_CHECKED);
@@ -438,7 +475,7 @@ static void app_build_options(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_
     lv_obj_set_style_border_width(bt_cont, 0, 0);
 
     lv_obj_t * bt_label = lv_label_create(bt_cont);
-    lv_label_set_text(bt_label, "Bluetooth (BLE)");
+    lv_label_set_text(bt_label, TXT_OPT_BT);
 
     lv_obj_t * bt_sw = lv_switch_create(bt_cont);
     if (backend_get_bluetooth()) lv_obj_add_state(bt_sw, LV_STATE_CHECKED);
@@ -452,68 +489,111 @@ static void app_build_options(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_
     lv_obj_t * wifi_btn = lv_button_create(cont);
     lv_obj_set_size(wifi_btn, LV_PCT(100), 50);
     lv_obj_t * wifi_btn_label = lv_label_create(wifi_btn);
-    lv_label_set_text(wifi_btn_label, "Reconectar WiFi");
+    lv_label_set_text(wifi_btn_label, TXT_OPT_WIFI_RECONNECT);
     lv_obj_center(wifi_btn_label);
     lv_obj_add_event_cb(wifi_btn, [](lv_event_t * e) {
         backend_wifi_reconnect();
     }, LV_EVENT_CLICKED, NULL);
 }
 
+// Per-instance gallery state. Heap-allocated (plain malloc, NOT lv_malloc, so
+// the download task can free it from Core 0 without touching LVGL's heap) and
+// tied to the screen's lifetime. This replaces the old shared `static` struct,
+// which broke on re-entry and use-after-free when leaving mid-download.
+typedef struct {
+    volatile bool finished;   // set by the DL task when the download attempt ends
+    volatile bool orphaned;   // set by cleanup if the screen died mid-download
+    void*        buffer;      // downloaded bytes (owned by st until consumed)
+    size_t       size;
+    lv_obj_t*    label;
+    lv_obj_t*    img;
+    lv_obj_t*    screen;
+    lv_timer_t*  timer;
+} gallery_state_t;
+
+// Core 0: download, publish the result, and self-clean if the UI already left.
+static void gallery_dl_task(void* p) {
+    gallery_state_t* st = (gallery_state_t*)p;
+    size_t s = 0;
+    void* b = backend_download_file("https://wineandsorcery.com/hero.png", &s);
+    st->buffer = b;
+    st->size = s;
+    st->finished = true;
+    // If the screen was destroyed while downloading, nobody else owns st now.
+    if (st->orphaned) {
+        if (st->buffer) free(st->buffer);
+        free(st);
+    }
+    vTaskDelete(NULL);
+}
+
+// Core 1: poll for the download result and show it once ready.
+static void gallery_poll_cb(lv_timer_t * t) {
+    gallery_state_t* st = (gallery_state_t*)lv_timer_get_user_data(t);
+    if (!st->finished) return;
+
+    if (st->buffer && st->size > 0) {
+        lv_label_set_text(st->label, ""); // clear "downloading"
+
+        lv_image_dsc_t * dsc = (lv_image_dsc_t *)malloc(sizeof(lv_image_dsc_t));
+        dsc->header.magic = LV_IMAGE_HEADER_MAGIC;
+        dsc->header.cf = LV_COLOR_FORMAT_RAW; // Raw image data for LODEPNG
+        dsc->header.w = 0;
+        dsc->header.h = 0;
+        dsc->data_size = st->size;
+        dsc->data = (const uint8_t*)st->buffer;
+
+        lv_image_set_src(st->img, dsc);
+
+        // Buffer ownership moves to dsc, freed on Back (screen user_data path).
+        lv_obj_set_user_data(st->screen, dsc);
+        st->buffer = NULL;
+    } else {
+        lv_label_set_text(st->label, TXT_GAL_ERROR);
+    }
+    // Stop polling; st itself is freed by the screen-delete cleanup below.
+    st->timer = NULL;
+    lv_timer_delete(t);
+}
+
+// Core 1: screen destroyed (Back). Kill the timer; free st if the download
+// already finished, otherwise hand ownership to the running task (orphaned).
+static void gallery_cleanup_cb(lv_event_t * e) {
+    gallery_state_t* st = (gallery_state_t*)lv_event_get_user_data(e);
+    if (!st) return;
+    if (st->timer) { lv_timer_delete(st->timer); st->timer = NULL; }
+    if (st->finished) {
+        if (st->buffer) free(st->buffer); // only set if never consumed into a dsc
+        free(st);
+    } else {
+        st->orphaned = true; // the DL task frees st (and its buffer) when it ends
+    }
+}
+
 static void app_build_gallery(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label) {
-    lv_label_set_text(title_label, "Galeria");
-    lv_label_set_text(content, "Iniciando descarga...");
+    lv_label_set_text(title_label, TXT_APP_GALLERY_NAME);
+    lv_label_set_text(content, TXT_GAL_DOWNLOADING);
 
-    static struct {
-        volatile bool finished;
-        void* buffer;
-        size_t size;
-        lv_obj_t* label;
-        lv_obj_t* img;
-        lv_obj_t* screen;
-    } gal_state;
+    gallery_state_t* st = (gallery_state_t*)malloc(sizeof(gallery_state_t));
+    if (!st) return;
+    st->finished = false;
+    st->orphaned = false;
+    st->buffer = NULL;
+    st->size = 0;
+    st->label = content;
+    st->img = lv_image_create(app_screen);
+    st->screen = app_screen;
+    st->timer = NULL;
+    lv_obj_center(st->img);
 
-    gal_state.finished = false;
-    gal_state.buffer = NULL;
-    gal_state.size = 0;
-    gal_state.label = content;
-    gal_state.img = lv_image_create(app_screen);
-    gal_state.screen = app_screen;
-    lv_obj_center(gal_state.img);
+    // Tie st's lifetime to the screen (fires on any exit path).
+    lv_obj_add_event_cb(app_screen, gallery_cleanup_cb, LV_EVENT_DELETE, st);
 
-    // Create a background task for HTTP so we don't freeze LVGL transitions
-    xTaskCreatePinnedToCore([](void* p) {
-        size_t s = 0;
-        void* b = backend_download_file("https://wineandsorcery.com/hero.png", &s);
-        gal_state.buffer = b;
-        gal_state.size = s;
-        gal_state.finished = true;
-        vTaskDelete(NULL);
-    }, "GalDL", 8192, NULL, 1, NULL, 0); // Core 0 is backend core
+    // Background HTTP download on Core 0 so LVGL transitions don't freeze.
+    xTaskCreatePinnedToCore(gallery_dl_task, "GalDL", 8192, st, 1, NULL, 0);
 
-    // Create an LVGL timer to safely update UI once the background task finishes
-    lv_timer_create([](lv_timer_t * t) {
-        if (gal_state.finished) {
-            if (gal_state.buffer && gal_state.size > 0) {
-                lv_label_set_text(gal_state.label, ""); // Clear "descargando"
-
-                lv_image_dsc_t * dsc = (lv_image_dsc_t *)malloc(sizeof(lv_image_dsc_t));
-                dsc->header.magic = LV_IMAGE_HEADER_MAGIC;
-                dsc->header.cf = LV_COLOR_FORMAT_RAW; // Raw image data for LODEPNG
-                dsc->header.w = 0;
-                dsc->header.h = 0;
-                dsc->data_size = gal_state.size;
-                dsc->data = (const uint8_t*)gal_state.buffer;
-
-                lv_image_set_src(gal_state.img, dsc);
-
-                // Save descriptor pointer so it can be freed on Back button
-                lv_obj_set_user_data(gal_state.screen, dsc);
-            } else {
-                lv_label_set_text(gal_state.label, "Error: Timeout o red inestable.");
-            }
-            lv_timer_delete(t); // Stop polling
-        }
-    }, 100, NULL); // Poll every 100ms
+    // Poll for completion on the UI side.
+    st->timer = lv_timer_create(gallery_poll_cb, 100, st);
 }
 
 #if ENABLE_APP_ANIM
@@ -586,7 +666,7 @@ static lv_obj_t * anim_make_pixel(lv_obj_t * parent, int size, lv_align_t align,
 }
 
 static void app_build_anim(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label) {
-    lv_label_set_text(title_label, "Animacion");
+    lv_label_set_text(title_label, TXT_APP_ANIM_NAME);
     lv_obj_add_flag(content, LV_OBJ_FLAG_HIDDEN); // hide the default content label
 
     anim_state_t * st = (anim_state_t *)lv_malloc(sizeof(anim_state_t));
@@ -635,8 +715,8 @@ static void mic_bar_update_cb(lv_timer_t * t) {
 }
 
 static void app_build_mic(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label) {
-    lv_label_set_text(title_label, "Mic Test");
-    lv_label_set_text(content, "Activa el mic y hace ruido:\nla barra deberia moverse.");
+    lv_label_set_text(title_label, TXT_APP_MIC_NAME);
+    lv_label_set_text(content, TXT_MIC_DESC);
     lv_obj_set_style_text_align(content, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_align(content, LV_ALIGN_TOP_MID, 0, 70);
 
@@ -679,12 +759,12 @@ static void imu_tick_cb(lv_timer_t * t) {
 }
 
 static void app_build_imu(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label) {
-    lv_label_set_text(title_label, "Movimiento (IMU)");
+    lv_label_set_text(title_label, TXT_APP_IMU_TITLE);
     lv_obj_add_flag(content, LV_OBJ_FLAG_HIDDEN); // hide the default content label
 
     if (!imu_begin()) {
         lv_obj_clear_flag(content, LV_OBJ_FLAG_HIDDEN);
-        lv_label_set_text(content, "IMU no detectado (QMI8658).");
+        lv_label_set_text(content, TXT_IMU_NOT_FOUND);
         lv_obj_center(content);
         return;
     }
@@ -783,7 +863,7 @@ static void app_launcher_event_cb(lv_event_t * e) {
 
         if (app->build == NULL) {
             // Action app (no window)
-            if (app->id == 4) {
+            if (app->id == APP_SLEEP) {
                 lvgl_port_set_backlight(false); // Instant Sleep
             }
             return;
@@ -919,12 +999,12 @@ static void create_main_screen() {
     lv_obj_set_style_pad_column(app_grid, 20, 0);
 
     // Populate Desktop Apps
-    add_app_icon(app_grid, 0); // Calculator
-    add_app_icon(app_grid, 9); // Web Gallery
+    add_app_icon(app_grid, APP_CALC);    // Calculator
+    add_app_icon(app_grid, APP_GALLERY); // Web Gallery
 #if ENABLE_APP_ANIM
-    add_app_icon(app_grid, 10); // Animation
+    add_app_icon(app_grid, APP_ANIM);    // Animation
 #endif
-    add_app_icon(app_grid, 3); // Settings
+    add_app_icon(app_grid, APP_SETTINGS); // Settings
 }
 
 static void boot_timer_cb(lv_timer_t * timer) {

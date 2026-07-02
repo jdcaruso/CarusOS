@@ -1,5 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 #include "lv_conf.h"
 #include <lvgl.h>
 #include "pin_config.h"
@@ -19,6 +21,19 @@ lv_color_t *disp_draw_buf;
 // #define RGB_PANEL
 #define DIRECT_RENDER_MODE
 
+// The XCA9554 expander driver caches its output register in RAM and does a
+// read-modify-write of that cache on every digitalWrite(). The I2C HAL lock
+// makes each transaction atomic, but NOT the cache: the backlight (Core 1,
+// touch) and the audio amp (Core 0, Task_Audio) live in the same byte, so two
+// concurrent writes can clobber each other. This mutex serializes the two
+// runtime setters that touch the expander.
+static SemaphoreHandle_t expander_mutex = NULL;
+
+// Set by my_disp_flush() whenever LVGL renders new content; consumed by
+// lvgl_port_flush() so we only push the ~460 KB framebuffer to the panel when
+// something actually changed (huge CPU/bandwidth win on a static screen).
+static volatile bool fb_dirty = true;
+
 Arduino_XCA9554SWSPI *expander = new Arduino_XCA9554SWSPI(
   7, 0, 2, 1, &Wire, 0x20);
 
@@ -34,14 +49,6 @@ Arduino_RGB_Display *gfx = new Arduino_RGB_Display(
   480 /* width */, 480 /* height */, rgbpanel, 0 /* rotation */, true /* auto_flush */,
   expander, GFX_NOT_DEFINED /* RST */, st7701_type1_init_operations, sizeof(st7701_type1_init_operations));
 
-#if LV_USE_LOG != 0
-void my_print(lv_log_level_t level, const char *buf) {
-  LV_UNUSED(level);
-  Serial.println(buf);
-  Serial.flush();
-}
-#endif
-
 uint32_t millis_cb(void) {
   return millis();
 }
@@ -52,23 +59,27 @@ void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
   uint32_t h = lv_area_get_height(area);
   gfx->draw16bitRGBBitmap(area->x1, area->y1, (uint16_t *)px_map, w, h);
 #endif
+  // LVGL rendered something: mark the framebuffer for the next panel push.
+  fb_dirty = true;
   lv_disp_flush_ready(disp);
 }
 
 static bool backlight_state = true;
 
 void lvgl_port_set_backlight(bool state) {
-    if (expander) {
-        backlight_state = state;
-        expander->digitalWrite(5, state ? HIGH : LOW);
-    }
+    if (!expander) return;
+    if (expander_mutex) xSemaphoreTake(expander_mutex, portMAX_DELAY);
+    backlight_state = state;
+    expander->digitalWrite(EXP_PIN_BACKLIGHT, state ? HIGH : LOW);
+    if (expander_mutex) xSemaphoreGive(expander_mutex);
 }
 
 void lvgl_port_set_audio_amp(bool state) {
-    if (expander) {
-        expander->pinMode(3, OUTPUT);
-        expander->digitalWrite(3, state ? HIGH : LOW);
-    }
+    if (!expander) return;
+    if (expander_mutex) xSemaphoreTake(expander_mutex, portMAX_DELAY);
+    expander->pinMode(EXP_PIN_AMP, OUTPUT);
+    expander->digitalWrite(EXP_PIN_AMP, state ? HIGH : LOW);
+    if (expander_mutex) xSemaphoreGive(expander_mutex);
 }
 
 /*Read the touchpad*/
@@ -120,14 +131,16 @@ void rounder_event_cb(lv_event_t *e) {
 }
 
 void lvgl_port_init() {
-  Wire.begin(47, 48);
-  expander->pinMode(5, OUTPUT);
-  expander->pinMode(6, OUTPUT);
-  expander->digitalWrite(6, LOW);
+  expander_mutex = xSemaphoreCreateMutex();
+
+  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+  expander->pinMode(EXP_PIN_BACKLIGHT, OUTPUT);
+  expander->pinMode(EXP_PIN_PANEL_RST, OUTPUT);
+  expander->digitalWrite(EXP_PIN_PANEL_RST, LOW);
   delay(200);
-  expander->digitalWrite(5, LOW);
+  expander->digitalWrite(EXP_PIN_BACKLIGHT, LOW);
   delay(200);
-  expander->digitalWrite(5, HIGH);
+  expander->digitalWrite(EXP_PIN_BACKLIGHT, HIGH);
   delay(200);
 
   if (!gfx->begin()) {
@@ -136,17 +149,15 @@ void lvgl_port_init() {
   gfx->fillScreen(RGB565_BLACK);
 
   GT911.setPins(-1, -1);
-  if (!GT911.begin(Wire, GT911_SLAVE_ADDRESS_L, 47, 48)) {
+  if (!GT911.begin(Wire, GT911_SLAVE_ADDRESS_L, PIN_I2C_SDA, PIN_I2C_SCL)) {
     Serial.println("Failed to find GT911 - check your wiring!");
   }
   GT911.setMaxTouchPoint(1);
 
   lv_init();
   lv_tick_set_cb(millis_cb);
-
-#if LV_USE_LOG != 0
-  lv_log_register_print_cb(my_print);
-#endif
+  // Note: the LVGL log print callback is registered in the .ino (my_log_cb),
+  // which routes logs to backend_log(). Do not register a second one here.
 
   screenWidth = gfx->width();
   screenHeight = gfx->height();
@@ -192,12 +203,16 @@ void lvgl_port_flush() {
 #ifdef DIRECT_RENDER_MODE
 #if defined(CANVAS) || defined(RGB_PANEL) || defined(DSI_PANEL)
   gfx->flush();
-#else   
-  gfx->draw16bitRGBBitmap(0, 0, (uint16_t *)disp_draw_buf, screenWidth, screenHeight);
-#endif  
-#else   
+#else
+  // Only push the framebuffer when LVGL actually drew something.
+  if (fb_dirty) {
+    gfx->draw16bitRGBBitmap(0, 0, (uint16_t *)disp_draw_buf, screenWidth, screenHeight);
+    fb_dirty = false;
+  }
+#endif
+#else
 #ifdef CANVAS
   gfx->flush();
 #endif
-#endif  
+#endif
 }

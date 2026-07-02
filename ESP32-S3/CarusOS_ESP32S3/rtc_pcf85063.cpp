@@ -3,6 +3,7 @@
 #if CARUSOS_USE_RTC
 #include <Arduino.h>
 #include <Wire.h>
+#include "pin_config.h"
 #include "SensorPCF85063.hpp"  // from SensorLib
 #include "rtc_pcf85063.h"
 
@@ -11,7 +12,7 @@ static bool rtc_ready = false;
 
 bool rtc_begin() {
     if (rtc_ready) return true;
-    if (!rtc.begin(Wire, 47, 48)) {
+    if (!rtc.begin(Wire, PIN_I2C_SDA, PIN_I2C_SCL)) {
         Serial.println("[RTC] PCF85063 not found!");
         return false;
     }

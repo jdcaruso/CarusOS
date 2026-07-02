@@ -68,6 +68,8 @@ typedef enum {
     BCMD_SET_ANIMATIONS,
     BCMD_SET_BLUETOOTH,
     BCMD_SET_WIFI,
+    BCMD_FS_LIST,     // list files (FFat runs on Core 0; result via backend_fs_poll)
+    BCMD_FS_FORMAT,   // format/mount FFat on demand (slow; must not block the UI core)
 } backend_cmd_type_t;
 
 typedef struct {
@@ -77,6 +79,23 @@ typedef struct {
 
 static QueueHandle_t backend_queue = NULL;
 
+// Log -> Telnet queue. backend_log() can run on any core (e.g. the LVGL log
+// callback on Core 1), but telnetClient must only be touched by Core 0: the
+// accept loop stops/replaces the client there, so printing from another core
+// races with that (use-after-free on the socket). Messages are queued here
+// and drained to the client by Task_Backend on Core 0.
+typedef struct {
+    char msg[160];
+} log_msg_t;
+static QueueHandle_t log_queue = NULL;
+
+// File-system result buffer. The FFat work runs on Core 0 (Task_Backend) and
+// leaves its text output here; the UI (Core 1) picks it up via backend_fs_poll()
+// once fs_result_ready flips true. Single producer / single consumer, guarded by
+// the volatile flag (same lightweight pattern as the rest of the cross-core state).
+static char fs_result[512];
+static volatile bool fs_result_ready = false;
+
 // Core-0 command handlers
 static void do_enable_ota();
 static void do_wifi_reconnect();
@@ -84,6 +103,8 @@ static void do_set_telnet(bool enable);
 static void do_set_animations(bool enable);
 static void do_set_bluetooth(bool enable);
 static void do_set_wifi(bool enable);
+static void do_fs_list();
+static void do_fs_format();
 
 static void do_enable_ota() {
     if (!ota_enabled && wifi_connected) {
@@ -125,7 +146,8 @@ String backend_get_ip() {
     return "Disconnected";
 }
 
-String backend_list_files() {
+// Runs on Core 0 only (called from Task_Backend). Builds the file listing.
+static String fs_do_list() {
     String output = "";
 #if CARUSOS_USE_FS
     // --- DEBUG instrumentation (v0.40 crash hunt). Remove once fixed. ---
@@ -174,17 +196,54 @@ String backend_list_files() {
     return output;
 }
 
-bool backend_format_fs() {
+// Runs on Core 0 only. Mounts/formats FFat, then returns the fresh listing.
+static String fs_do_format() {
 #if CARUSOS_USE_FS
     // Mount, formatting the partition if needed. DELIBERATE user action only -
     // never call this at boot (a slow format there can trip the watchdog).
     Serial.println("[Backend] Formatting/mounting FFat (on demand)...");
     fs_mounted = FFat.begin(true);
     Serial.printf("[Backend] FFat format result: %s\n", fs_mounted ? "OK" : "FAIL");
-    return fs_mounted;
+    if (!fs_mounted) {
+        return "Formato fallo.\nRevisa el esquema de particion (FATFS).";
+    }
+    return fs_do_list();
 #else
-    return false;
+    return "File System Disabled in Config.";
 #endif
+}
+
+// --- Cross-core FS bridge (Core 0 does the work, Core 1 UI polls the result) ---
+
+static void publish_fs_result(const String &s) {
+    strncpy(fs_result, s.c_str(), sizeof(fs_result) - 1);
+    fs_result[sizeof(fs_result) - 1] = '\0';
+    fs_result_ready = true;
+}
+
+static void do_fs_list()   { publish_fs_result(fs_do_list()); }
+static void do_fs_format() { publish_fs_result(fs_do_format()); }
+
+// Called from the UI (Core 1): enqueue the request for Core 0 to run.
+void backend_fs_request_list() {
+    fs_result_ready = false;
+    backend_cmd_t cmd = { BCMD_FS_LIST, 0 };
+    if (backend_queue) xQueueSend(backend_queue, &cmd, 0);
+}
+
+void backend_fs_request_format() {
+    fs_result_ready = false;
+    backend_cmd_t cmd = { BCMD_FS_FORMAT, 0 };
+    if (backend_queue) xQueueSend(backend_queue, &cmd, 0);
+}
+
+// Called from the UI: if a result is ready, copy it out and return true.
+bool backend_fs_poll(char *out, size_t out_size) {
+    if (!fs_result_ready) return false;
+    strncpy(out, fs_result, out_size - 1);
+    out[out_size - 1] = '\0';
+    fs_result_ready = false;
+    return true;
 }
 
 #if CARUSOS_USE_AUDIO
@@ -364,6 +423,8 @@ static void Task_Backend(void *pvParameters) {
                 case BCMD_SET_ANIMATIONS:  do_set_animations(cmd.arg != 0); break;
                 case BCMD_SET_BLUETOOTH:   do_set_bluetooth(cmd.arg != 0);  break;
                 case BCMD_SET_WIFI:        do_set_wifi(cmd.arg != 0);       break;
+                case BCMD_FS_LIST:         do_fs_list();                    break;
+                case BCMD_FS_FORMAT:       do_fs_format();                  break;
             }
         }
 
@@ -423,12 +484,24 @@ static void Task_Backend(void *pvParameters) {
                 }
             }
         }
+
+        // Drain queued log messages to the telnet client. Always drain (even
+        // with telnet off) so the queue never fills with stale messages.
+        log_msg_t lm;
+        while (xQueueReceive(log_queue, &lm, 0) == pdTRUE) {
+            if (runtime_use_telnet && telnetClient && telnetClient.connected()) {
+                telnetClient.print(lm.msg);
+            }
+        }
     }
 }
 
 void backend_core_init() {
     // Queue for UI -> backend commands (executed on Core 0)
     backend_queue = xQueueCreate(10, sizeof(backend_cmd_t));
+
+    // Queue for log -> telnet messages (drained on Core 0)
+    log_queue = xQueueCreate(16, sizeof(log_msg_t));
 
     // Create backend task on Core 0
     xTaskCreatePinnedToCore(
@@ -446,20 +519,6 @@ bool backend_is_wifi_connected() {
     return wifi_connected;
 }
 
-bool backend_get_time(int &hour, int &minute) {
-    if (!wifi_connected) return false;
-    
-    struct tm timeinfo;
-    if (getLocalTime(&timeinfo, 10)) { // 10ms timeout
-        if (timeinfo.tm_year > 120) { // Make sure year is valid (>2020)
-            hour = timeinfo.tm_hour;
-            minute = timeinfo.tm_min;
-            return true;
-        }
-    }
-    return false;
-}
-
 bool backend_get_datetime(struct tm &out) {
     if (getLocalTime(&out, 10)) {
         if (out.tm_year > 120) return true; // valid (year > 2020)
@@ -469,8 +528,12 @@ bool backend_get_datetime(struct tm &out) {
 
 void backend_log(const char *msg) {
     Serial.print(msg);
-    if (runtime_use_telnet && telnetClient && telnetClient.connected()) {
-        telnetClient.print(msg);
+    // Never touch telnetClient here (may run on Core 1); queue for Core 0.
+    if (runtime_use_telnet && log_queue) {
+        log_msg_t item;
+        strncpy(item.msg, msg, sizeof(item.msg) - 1);
+        item.msg[sizeof(item.msg) - 1] = '\0';
+        xQueueSend(log_queue, &item, 0); // drop if full, never block the UI
     }
 }
 
@@ -530,7 +593,10 @@ void* backend_download_file(const char* url, size_t* out_size) {
         int len = http.getSize();
         if (len > 0) {
             Serial.printf("[Backend] File size: %d bytes\n", len);
-            buffer = heap_caps_malloc(len, MALLOC_CAP_8BIT); // PSRAM
+            // Big image buffers belong in PSRAM; MALLOC_CAP_8BIT alone could
+            // eat scarce internal heap. Fall back to internal only if needed.
+            buffer = heap_caps_malloc(len, MALLOC_CAP_SPIRAM);
+            if (!buffer) buffer = heap_caps_malloc(len, MALLOC_CAP_8BIT);
             if (buffer) {
                 WiFiClient * stream = http.getStreamPtr();
                 uint8_t* ptr = (uint8_t*)buffer;

@@ -8,9 +8,6 @@ void backend_core_init();
 // Thread-safe query for WiFi status
 bool backend_is_wifi_connected();
 
-// Thread-safe query for NTP Time
-bool backend_get_time(int &hour, int &minute);
-
 // Full date+time (system clock: NTP-synced or RTC-seeded). True if valid.
 bool backend_get_datetime(struct tm &out);
 
@@ -49,6 +46,7 @@ void backend_set_wifi_enabled(bool enable);
 void* backend_download_file(const char* url, size_t* out_size);
 void backend_wifi_reconnect();
 
-// File System
-String backend_list_files();
-bool backend_format_fs(); // mount/format on demand (never at boot)
+// File System (async: work runs on Core 0, UI polls the text result on Core 1)
+void backend_fs_request_list();          // ask Core 0 to list files
+void backend_fs_request_format();        // ask Core 0 to format/mount (never at boot)
+bool backend_fs_poll(char *out, size_t out_size); // true + copies text when ready

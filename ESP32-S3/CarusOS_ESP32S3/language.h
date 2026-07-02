@@ -19,6 +19,42 @@
     #define TXT_AUDIO_STOP "Detener"
     #define TXT_AUDIO_VOL "Volumen"
     #define TXT_APP_SYSINFO_TITLE "Informacion del Sistema"
+    // App launcher names (icon labels)
+    #define TXT_APP_AUDIO_NAME   "Audio"
+    #define TXT_APP_SYSINFO_NAME "Sys Info"
+    #define TXT_APP_UPDATE_NAME  "Update"
+    #define TXT_APP_FILES_NAME   "Archivos"
+    #define TXT_APP_OPTIONS_NAME "Opciones"
+    #define TXT_APP_GALLERY_NAME "Galeria"
+    #define TXT_APP_ANIM_NAME    "Animacion"
+    #define TXT_APP_MIC_NAME     "Mic Test"
+    #define TXT_APP_IMU_NAME     "Movimiento"
+    // Sys Info
+    #define TXT_SYSINFO_TAB_SYS  "Sistema"
+    #define TXT_SYSINFO_TAB_HW   "Hardware"
+    #define TXT_SYSINFO_LOADING  "Cargando datos..."
+    // OTA
+    #define TXT_APP_OTA_TITLE    "Actualizacion del Sistema"
+    #define TXT_OTA_ENABLING     "Activando OTA..."
+    #define TXT_OTA_READY        "OTA lista!\nIP: %s"
+    #define TXT_OTA_HINT         "Arduino IDE -> Puertos -> Puertos de Red"
+    // File Explorer
+    #define TXT_FS_LOADING       "Cargando..."
+    #define TXT_FS_FORMATTING    "Formateando..."
+    #define TXT_FS_FORMAT_BTN    "Formatear"
+    // Gallery
+    #define TXT_GAL_DOWNLOADING  "Iniciando descarga..."
+    #define TXT_GAL_ERROR        "Error: Timeout o red inestable."
+    // Mic Test
+    #define TXT_MIC_DESC         "Activa el mic y hace ruido:\nla barra deberia moverse."
+    // IMU
+    #define TXT_APP_IMU_TITLE    "Movimiento (IMU)"
+    #define TXT_IMU_NOT_FOUND    "IMU no detectado (QMI8658)."
+    // Options
+    #define TXT_OPT_TELNET       "Telnet Logger (Puerto 23)"
+    #define TXT_OPT_ANIM         "Animaciones UI"
+    #define TXT_OPT_BT           "Bluetooth (BLE)"
+    #define TXT_OPT_WIFI_RECONNECT "Reconectar WiFi"
 #else
     #define TXT_BOOT_BOOTING "Booting CarusOS %s...\n"
     #define TXT_BOOT_PSRAM   "Mounting PSRAM... (8MB)\n"
@@ -37,4 +73,40 @@
     #define TXT_AUDIO_STOP "Stop"
     #define TXT_AUDIO_VOL "Volume"
     #define TXT_APP_SYSINFO_TITLE "System Information"
+    // App launcher names (icon labels)
+    #define TXT_APP_AUDIO_NAME   "Audio"
+    #define TXT_APP_SYSINFO_NAME "Sys Info"
+    #define TXT_APP_UPDATE_NAME  "Update"
+    #define TXT_APP_FILES_NAME   "Files"
+    #define TXT_APP_OPTIONS_NAME "Options"
+    #define TXT_APP_GALLERY_NAME "Gallery"
+    #define TXT_APP_ANIM_NAME    "Animation"
+    #define TXT_APP_MIC_NAME     "Mic Test"
+    #define TXT_APP_IMU_NAME     "Motion"
+    // Sys Info
+    #define TXT_SYSINFO_TAB_SYS  "System"
+    #define TXT_SYSINFO_TAB_HW   "Hardware"
+    #define TXT_SYSINFO_LOADING  "Loading stats..."
+    // OTA
+    #define TXT_APP_OTA_TITLE    "System Update"
+    #define TXT_OTA_ENABLING     "Enabling OTA..."
+    #define TXT_OTA_READY        "OTA Ready!\nIP: %s"
+    #define TXT_OTA_HINT         "Arduino IDE -> Ports -> Network Ports"
+    // File Explorer
+    #define TXT_FS_LOADING       "Loading..."
+    #define TXT_FS_FORMATTING    "Formatting..."
+    #define TXT_FS_FORMAT_BTN    "Format"
+    // Gallery
+    #define TXT_GAL_DOWNLOADING  "Starting download..."
+    #define TXT_GAL_ERROR        "Error: timeout or unstable network."
+    // Mic Test
+    #define TXT_MIC_DESC         "Enable the mic and make noise:\nthe bar should move."
+    // IMU
+    #define TXT_APP_IMU_TITLE    "Motion (IMU)"
+    #define TXT_IMU_NOT_FOUND    "IMU not detected (QMI8658)."
+    // Options
+    #define TXT_OPT_TELNET       "Telnet Logger (Port 23)"
+    #define TXT_OPT_ANIM         "UI Animations"
+    #define TXT_OPT_BT           "Bluetooth (BLE)"
+    #define TXT_OPT_WIFI_RECONNECT "Reconnect WiFi"
 #endif
