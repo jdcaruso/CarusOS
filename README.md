@@ -78,14 +78,18 @@ The ESP32 Arduino core (v3.x) ships the rest (`WiFi`, `Preferences`, `ArduinoOTA
 
 > Target board: **Waveshare ESP32-S3-Touch-LCD-4B** (480x480, ST7701 + GT911). The pin map lives in `pin_config.h` and `lvgl_port.cpp`.
 
-### First-time setup (credentials)
+### First-time setup (credentials & personal config)
 
-Credentials are **not** committed to the repo. Before compiling:
+Credentials and personal build config are **not** committed to the repo.
+Before compiling:
 
-1. Copy `secrets.h.example` to `secrets.h` (same folder).
-2. Open `secrets.h` and fill in your WiFi SSID/password and OTA password.
+1. Copy `customizations/secrets.h.example` to `customizations/secrets.h` and
+   fill in your WiFi SSID/password and OTA password.
+2. Copy `customizations/config_local.h.example` to `customizations/config_local.h`
+   and fill in any personal, non-secret values (e.g. the Gallery demo image URL).
 
-`secrets.h` is gitignored, so your credentials never leave your machine.
+Everything in `customizations/` except the `*.example` templates is gitignored,
+so your credentials and personal settings never leave your machine.
 
 ## 📁 Project Structure
 
@@ -93,7 +97,8 @@ CarusOS is structured to be easily portable.
 - `carusos_config.h`: Master configuration file. Turn features (Audio, FS, OTA) ON/OFF here to save RAM/Flash.
 - `ui_core.cpp`: Core 1 UI logic (LVGL).
 - `backend_core.cpp`: Core 0 Background logic (WiFi, NTP, FS).
-- `secrets.h`: Your WiFi/OTA credentials (gitignored — create it from `secrets.h.example`).
+- `customizations/secrets.h`: Your WiFi/OTA credentials (gitignored — create it from `customizations/secrets.h.example`).
+- `customizations/config_local.h`: Personal, non-secret build config like the Gallery demo URL (gitignored — create it from `customizations/config_local.h.example`).
 
 ## 🔒 Security Notes
 
@@ -101,7 +106,31 @@ CarusOS is a hobby/learning project. A few things are intentionally relaxed and 
 
 - **Telnet log server (port 23)** is unauthenticated — anyone on the same network can read the logs while it's enabled.
 - **HTTPS downloads use `setInsecure()`** — TLS certificates are not validated.
-- **OTA** is protected only by the password you set in `secrets.h`. Use a strong one.
+- **OTA** is protected only by the password you set in `customizations/secrets.h`. Use a strong one.
+
+## 🔐 Personal Customizations
+
+CarusOS is public, so nothing personal — credentials or otherwise — can live in
+tracked files. Anything like that goes in
+[`customizations/`](ESP32-S3/CarusOS_ESP32S3/customizations/), split in two files:
+
+- **`secrets.h`** — actual credentials (WiFi SSID/password, OTA password).
+- **`config_local.h`** — personal, non-secret build settings that aren't generic
+  enough to hardcode in the public repo (e.g. a URL you point a demo app at).
+
+Both are gitignored; only their `*.example` counterparts (with placeholder
+values) are tracked, so anyone cloning the repo gets a working template and
+fills in their own values. This is enforced by CI: [`build.yml`](.github/workflows/build.yml)
+generates dummy `secrets.h`/`config_local.h` from the `*.example` files and
+does a real compile on every push — if a real file and its `.example` fall out
+of sync (a new `#define` added to one but not the other), the build fails
+before it reaches `main`.
+
+If you add your own personal override file, follow the same pattern: create
+`customizations/yourfile.h` (real values, never committed) plus
+`customizations/yourfile.h.example` (placeholder values, tracked), `#include`
+it from [`carusos_config.h`](ESP32-S3/CarusOS_ESP32S3/carusos_config.h), and
+add the CI step to generate the dummy version.
 
 ## 📄 License
 

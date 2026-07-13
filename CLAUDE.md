@@ -30,7 +30,8 @@ State shared across cores currently uses `volatile` flags.
 |------|----------------|
 | `CarusOS_ESP32S3.ino` | Entry point; creates the Core 1 GUI task |
 | `carusos_config.h` | Master feature flags (Audio, FS, OTA, BT, language…) |
-| `secrets.h` | WiFi/OTA credentials — **gitignored**, create from `secrets.h.example` |
+| `customizations/secrets.h` | WiFi/OTA credentials — **gitignored**, create from `customizations/secrets.h.example` |
+| `customizations/config_local.h` | Personal, non-secret build config (URLs, hostnames…) — **gitignored**, create from `customizations/config_local.h.example` |
 | `pin_config.h` | Audio codec pins + power-chip define |
 | `ui_core.cpp` | Core 1: LVGL UI, boot screen, app registry & windows |
 | `backend_core.cpp` | Core 0: WiFi, NTP, audio, FS, OTA, Telnet |
@@ -68,7 +69,9 @@ to the current date.
 ## Build & flash
 
 Arduino IDE (sketch folder `ESP32-S3/CarusOS_ESP32S3/`). Before the first build,
-copy `secrets.h.example` to `secrets.h` and fill in your credentials.
+copy `customizations/secrets.h.example` to `customizations/secrets.h` and
+`customizations/config_local.h.example` to `customizations/config_local.h`,
+then fill in your values.
 
 Critical Arduino IDE settings (see README for the full list): Board
 `ESP32S3 Dev Module`, Flash `16MB`, Partition `16M Flash (3MB APP / 9.9MB FATFS)`,
@@ -86,8 +89,12 @@ Dependencies: LVGL 9.x, Arduino_GFX, SensorLib (GT911), ESP_I2S.
   Animation / Mic Test apps). The Arduino IDE prints `Sketch uses N bytes (X%)`
   after each build — watch the % on the 3 MB app partition.
 - User-facing strings go through `TXT_*` macros in `language.h` (keep EN + ES in sync).
-- Never commit credentials. `secrets.h` is gitignored; only `secrets.h.example`
-  is tracked.
+- Never commit credentials. `customizations/secrets.h` is gitignored; only
+  `customizations/secrets.h.example` is tracked. Same pattern for non-secret
+  personal build config (personal URLs, hostnames…) in
+  `customizations/config_local.h` / `config_local.h.example`. Any new personal
+  override file follows this pattern: real file gitignored, `*.example` with
+  placeholder values tracked and referenced from `carusos_config.h`.
 - The repo is public — no real SSIDs, passwords, private URLs, or personal data
   in tracked files.
 

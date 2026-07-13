@@ -515,7 +515,7 @@ typedef struct {
 static void gallery_dl_task(void* p) {
     gallery_state_t* st = (gallery_state_t*)p;
     size_t s = 0;
-    void* b = backend_download_file("https://wineandsorcery.com/hero.png", &s);
+    void* b = backend_download_file(CARUSOS_GALLERY_IMAGE_URL, &s);
     st->buffer = b;
     st->size = s;
     st->finished = true;

@@ -2,8 +2,11 @@ name: Build (arduino-cli)
 
 # Compile-check CarusOS on every push / PR. This does NOT flash hardware —
 # it only verifies the sketch builds cleanly for the target board, so a broken
-# commit is caught before anyone pulls it. No secrets are exposed: secrets.h is
-# gitignored and generated here from the tracked secrets.h.example (dummy values).
+# commit is caught before anyone pulls it. No secrets are exposed:
+# customizations/secrets.h is gitignored and generated here from the tracked
+# customizations/secrets.h.example (dummy values). This also catches drift if
+# secrets.h.example falls out of sync with real secrets.h (missing defines
+# fail the compile).
 
 on:
   push:
@@ -51,8 +54,10 @@ jobs:
         # The project keeps its own copy in the sketch; expose it to the build.
         run: cp "$SKETCH_DIR/lv_conf.h" "$HOME/Arduino/libraries/lv_conf.h"
 
-      - name: Generate dummy secrets.h
-        run: cp "$SKETCH_DIR/secrets.h.example" "$SKETCH_DIR/secrets.h"
+      - name: Generate dummy secrets.h and config_local.h
+        run: |
+          cp "$SKETCH_DIR/customizations/secrets.h.example" "$SKETCH_DIR/customizations/secrets.h"
+          cp "$SKETCH_DIR/customizations/config_local.h.example" "$SKETCH_DIR/customizations/config_local.h"
 
       - name: Compile
         run: arduino-cli compile --fqbn "$FQBN" --warnings all "$SKETCH_DIR"

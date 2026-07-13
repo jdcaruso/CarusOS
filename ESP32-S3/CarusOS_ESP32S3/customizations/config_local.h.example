@@ -1,0 +1,13 @@
+#pragma once
+
+// CarusOS local config - personal build settings that aren't secrets, but
+// also aren't generic enough to hardcode in the public repo (personal URLs,
+// hostnames, IPs you point your build at, etc.).
+//
+//   1. Copy this file to "config_local.h" (same folder, customizations/).
+//   2. Fill in your own values below.
+//
+// customizations/config_local.h is gitignored and must NEVER be committed.
+
+// Image URL used by the Gallery app demo.
+#define CARUSOS_GALLERY_IMAGE_URL   "https://example.com/hero.png"

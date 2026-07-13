@@ -6,9 +6,10 @@ instructions, conventions, and known limitations.
 
 Non-negotiables (also in CLAUDE.md):
 
-- **Never commit credentials.** `secrets.h` is gitignored; only `secrets.h.example`
-  is tracked. This is a **public** repo — no real SSIDs, passwords, private URLs,
-  or personal data in tracked files.
+- **Never commit credentials or personal config.** `customizations/secrets.h`
+  and `customizations/config_local.h` are gitignored; only their `*.example`
+  templates are tracked. This is a **public** repo — no real SSIDs, passwords,
+  private URLs, or personal data in tracked files.
 - **Versioning:** `CARUSOS_VERSION` in `carusos_config.h` is the source of truth.
   Bug fix → bump the last digit; new feature → bump the middle digit. Keep the
   README badge and `CARUSOS_SOURCE_DATE` in sync.

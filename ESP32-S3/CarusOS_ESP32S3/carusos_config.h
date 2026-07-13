@@ -2,9 +2,12 @@
 
 // CarusOS Global Configuration
 
-// WiFi / OTA credentials live in secrets.h (gitignored).
-// Copy secrets.h.example to secrets.h and fill in your values.
-#include "secrets.h"
+// WiFi / OTA credentials and any personal overrides live in customizations/
+// (gitignored). Copy customizations/secrets.h.example to
+// customizations/secrets.h (and config_local.h.example to config_local.h)
+// and fill in your values.
+#include "customizations/secrets.h"
+#include "customizations/config_local.h"
 
 #define CARUSOS_VERSION         "v0.43.0"
 #define CARUSOS_AUTHOR          "Javier D. Caruso"

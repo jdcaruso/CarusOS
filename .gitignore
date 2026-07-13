@@ -1,5 +1,8 @@
-# Secrets - never commit credentials
-secrets.h
+# Personal customizations - never commit (secrets, local config overrides).
+# Anything dropped in customizations/ is ignored by default except *.example
+# templates, which stay tracked as the public reference.
+**/customizations/*
+!**/customizations/*.example
 
 # Arduino / PlatformIO build artifacts
 build/
