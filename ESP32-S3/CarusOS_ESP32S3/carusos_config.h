@@ -9,9 +9,9 @@
 #include "customizations/secrets.h"
 #include "customizations/config_local.h"
 
-#define CARUSOS_VERSION         "v0.43.0"
+#define CARUSOS_VERSION         "v0.44.0"
 #define CARUSOS_AUTHOR          "Javier D. Caruso"
-#define CARUSOS_SOURCE_DATE     "2026-07-02"
+#define CARUSOS_SOURCE_DATE     "2026-07-13"
 #define CARUSOS_LANG_ES         1 // 1 for Spanish, 0 for English
 
 // NTP Settings
@@ -32,11 +32,17 @@
 #define CARUSOS_USE_RTC         1 // 1: PCF85063 RTC (offline clock). 0: no se compila.
 #define CARUSOS_USE_BLUETOOTH   0 // 0: Compile sin Bluetooth, 1: Compilar soporte BT
 #define CARUSOS_USE_AUDIO       1 // 0: Disable Audio and save RAM/Flash, 1: Enable ES8311 Audio   
-#define CARUSOS_USE_FS          1 // 1: Enable FFat File System (needs FATFS partition scheme).
+#define CARUSOS_USE_FS          0 // 1: Enable FFat File System (needs FATFS partition scheme).
                                   // Si el mount bootloopea en un device reflasheado muchas veces:
                                   // basura previa en la region FAT. Fix una sola vez:
                                   //   esptool erase_region 0x610000 0x9E0000
                                   // (ver FABLE5_REVIEW.md, item 3)
+                                  // TEMP 2026-07-13: dejado en 0 porque, tras el erase, un
+                                  // find_volume() sobre la particion en blanco (0xFF) dispara
+                                  // el interrupt WDT en Core 0 (heap_caps_get_largest_free_block
+                                  // en cada sector leido via wear-levelling, contra el heap grande
+                                  // de PSRAM). Ver conversacion para el fix real (formatear una
+                                  // vez con begin(true) y volver a begin(false)).
 #define CARUSOS_USE_TELNET_LOG  1 // 1: Enable Telnet Log Server on port 23
 #define CARUSOS_USE_OTA         1 // 1: Enable OTA Updates
 #define CARUSOS_DARK_MODE       1   
