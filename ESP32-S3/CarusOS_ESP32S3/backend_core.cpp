@@ -1,5 +1,8 @@
 #include "backend_core.h"
 #include "carusos_config.h"
+#include "customizations/secrets.h" // WiFi/OTA credentials: only this file sees them
+#include "pin_config.h"
+#include "language.h"
 #include "lvgl_port.h"
 #include <WiFi.h>
 #include <time.h>
@@ -26,11 +29,14 @@ bool runtime_wifi_enabled = true;
 #include <BLEServer.h>
 #endif
 
-#include <WiFiServer.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
+
+#if CARUSOS_USE_TELNET_LOG
+#include <WiFiServer.h>
 WiFiServer telnetServer(23);
 WiFiClient telnetClient;
+#endif
 
 #if CARUSOS_USE_FS
 #include <FFat.h>
@@ -84,10 +90,12 @@ static QueueHandle_t backend_queue = NULL;
 // accept loop stops/replaces the client there, so printing from another core
 // races with that (use-after-free on the socket). Messages are queued here
 // and drained to the client by Task_Backend on Core 0.
+#if CARUSOS_USE_TELNET_LOG
 typedef struct {
     char msg[160];
 } log_msg_t;
 static QueueHandle_t log_queue = NULL;
+#endif
 
 // File-system result buffer. The FFat work runs on Core 0 (Task_Backend) and
 // leaves its text output here; the UI (Core 1) picks it up via backend_fs_poll()
@@ -143,7 +151,7 @@ String backend_get_ip() {
     if (wifi_connected) {
         return WiFi.localIP().toString();
     }
-    return "Disconnected";
+    return TXT_DISCONNECTED;
 }
 
 // Runs on Core 0 only (called from Task_Backend). Builds the file listing.
@@ -157,22 +165,22 @@ static String fs_do_list() {
     const esp_partition_t* fat_part = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, NULL);
     Serial.printf("[FS] partition=%p\n", (void*)fat_part);
     if (fat_part == NULL) {
-        return "ERROR: FAT Partition not found.\nCheck Arduino IDE settings.";
+        return TXT_FS_NO_PARTITION;
     }
 
     // Guard: never touch FFat unless it actually mounted (avoids a null deref).
     if (!fs_mounted) {
-        return "FS no montada.\nToca Formatear para inicializarla.";
+        return TXT_FS_NOT_MOUNTED;
     }
 
     Serial.println("[FS] opening root...");
     File root = FFat.open("/");
     Serial.printf("[FS] root opened, valid=%d\n", (bool)root);
     if (!root) {
-        return "ERROR: Failed to open root directory.";
+        return TXT_FS_ROOT_ERROR;
     }
     if (!root.isDirectory()) {
-        return "ERROR: Root is not a directory.";
+        return TXT_FS_ROOT_ERROR;
     }
 
     Serial.println("[FS] iterating...");
@@ -188,10 +196,10 @@ static String fs_do_list() {
     Serial.println("[FS] iteration done.");
 
     if (output == "") {
-        output = "Disk is empty.";
+        output = TXT_FS_EMPTY;
     }
 #else
-    output = "File System Disabled in Config.";
+    output = TXT_FS_DISABLED;
 #endif
     return output;
 }
@@ -205,11 +213,11 @@ static String fs_do_format() {
     fs_mounted = FFat.begin(true);
     Serial.printf("[Backend] FFat format result: %s\n", fs_mounted ? "OK" : "FAIL");
     if (!fs_mounted) {
-        return "Formato fallo.\nRevisa el esquema de particion (FATFS).";
+        return TXT_FS_FORMAT_FAILED;
     }
     return fs_do_list();
 #else
-    return "File System Disabled in Config.";
+    return TXT_FS_DISABLED;
 #endif
 }
 
@@ -248,8 +256,6 @@ bool backend_fs_poll(char *out, size_t out_size) {
 
 #if CARUSOS_USE_AUDIO
 static void Task_Audio(void *pvParameters) {
-// ... same as before
-
     // Init I2S
     i2s.setPins(PIN_ES7210_BCLK, PIN_ES7210_LRCK, PIN_ES8311_DOUT, PIN_ES7210_DIN, PIN_ES7210_MCLK);
     if (!i2s.begin(I2S_MODE_STD, 16000, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO, I2S_STD_SLOT_BOTH)) {
@@ -407,10 +413,12 @@ static void Task_Backend(void *pvParameters) {
     }
 #endif
 
+#if CARUSOS_USE_TELNET_LOG
     // Telnet needs the network stack, so only start it when WiFi is enabled.
     if (runtime_use_telnet && runtime_wifi_enabled) {
         telnetServer.begin();
     }
+#endif
 
     while (1) {
         // Drain UI commands (executed here on Core 0)
@@ -473,6 +481,7 @@ static void Task_Backend(void *pvParameters) {
             vTaskDelay(pdMS_TO_TICKS(50)); // Poll every 50ms normally
         }
 
+#if CARUSOS_USE_TELNET_LOG
         if (runtime_use_telnet && runtime_wifi_enabled) {
             if (telnetServer.hasClient()) {
                 if (!telnetClient || !telnetClient.connected()) {
@@ -493,6 +502,7 @@ static void Task_Backend(void *pvParameters) {
                 telnetClient.print(lm.msg);
             }
         }
+#endif
     }
 }
 
@@ -500,8 +510,10 @@ void backend_core_init() {
     // Queue for UI -> backend commands (executed on Core 0)
     backend_queue = xQueueCreate(10, sizeof(backend_cmd_t));
 
+#if CARUSOS_USE_TELNET_LOG
     // Queue for log -> telnet messages (drained on Core 0)
     log_queue = xQueueCreate(16, sizeof(log_msg_t));
+#endif
 
     // Create backend task on Core 0
     xTaskCreatePinnedToCore(
@@ -528,6 +540,7 @@ bool backend_get_datetime(struct tm &out) {
 
 void backend_log(const char *msg) {
     Serial.print(msg);
+#if CARUSOS_USE_TELNET_LOG
     // Never touch telnetClient here (may run on Core 1); queue for Core 0.
     if (runtime_use_telnet && log_queue) {
         log_msg_t item;
@@ -535,6 +548,7 @@ void backend_log(const char *msg) {
         item.msg[sizeof(item.msg) - 1] = '\0';
         xQueueSend(log_queue, &item, 0); // drop if full, never block the UI
     }
+#endif
 }
 
 bool backend_get_telnet() {
@@ -549,12 +563,14 @@ void backend_set_telnet(bool enable) {
 
 static void do_set_telnet(bool enable) {
     preferences.putBool("telnet", enable);
+#if CARUSOS_USE_TELNET_LOG
     if (enable && runtime_wifi_enabled) {
         telnetServer.begin();
     } else {
         if (telnetClient) telnetClient.stop();
         telnetServer.end();
     }
+#endif
 }
 
 bool backend_get_animations() {
@@ -674,11 +690,15 @@ static void do_set_wifi(bool enable) {
     if (enable) {
         WiFi.mode(WIFI_STA);
         WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+#if CARUSOS_USE_TELNET_LOG
         if (runtime_use_telnet) telnetServer.begin(); // network is back: telnet can start
+#endif
     } else {
+#if CARUSOS_USE_TELNET_LOG
         // Tear down telnet before the network goes away.
         if (telnetClient) telnetClient.stop();
         telnetServer.end();
+#endif
         WiFi.disconnect(true);
         WiFi.mode(WIFI_OFF);
     }

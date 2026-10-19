@@ -2,16 +2,16 @@
 
 // CarusOS Global Configuration
 
-// WiFi / OTA credentials and any personal overrides live in customizations/
-// (gitignored). Copy customizations/secrets.h.example to
-// customizations/secrets.h (and config_local.h.example to config_local.h)
-// and fill in your values.
-#include "customizations/secrets.h"
+// Personal overrides live in customizations/ (gitignored). Copy
+// customizations/config_local.h.example to config_local.h and
+// customizations/secrets.h.example to secrets.h, then fill in your values.
+// secrets.h (WiFi/OTA credentials) is included only by backend_core.cpp, the
+// one file that needs it, so the rest of the build never sees the passwords.
 #include "customizations/config_local.h"
 
-#define CARUSOS_VERSION         "v0.44.0"
+#define CARUSOS_VERSION         "v0.44.1"
 #define CARUSOS_AUTHOR          "Javier D. Caruso"
-#define CARUSOS_SOURCE_DATE     "2026-07-13"
+#define CARUSOS_SOURCE_DATE     "2026-10-19"
 #define CARUSOS_LANG_ES         1 // 1 for Spanish, 0 for English
 
 // NTP Settings
@@ -19,49 +19,46 @@
 #define GMT_OFFSET_SEC  -10800 // GMT-3
 #define DAYLIGHT_OFFSET_SEC 0
 
-// I2S Audio Pins
-#define PIN_ES7210_BCLK       16
-#define PIN_ES7210_LRCK       7
-#define PIN_ES7210_DIN        15
-#define PIN_ES7210_MCLK       5
-#define PIN_ES8311_DOUT       6
+// All pins (audio, I2C, I/O expander) live in pin_config.h.
 
-// Configuraciones del Sistema (Core)
-#define CARUSOS_USE_WIFI        1
+// System features
+#define CARUSOS_USE_WIFI        1 // Must stay 1: compiling WiFi out is not implemented yet.
 #define CARUSOS_USE_NTP_TIME    1
-#define CARUSOS_USE_RTC         1 // 1: PCF85063 RTC (offline clock). 0: no se compila.
-#define CARUSOS_USE_BLUETOOTH   0 // 0: Compile sin Bluetooth, 1: Compilar soporte BT
-#define CARUSOS_USE_AUDIO       1 // 0: Disable Audio and save RAM/Flash, 1: Enable ES8311 Audio   
+#define CARUSOS_USE_RTC         1 // 1: PCF85063 RTC (offline clock). 0: compiled out.
+#define CARUSOS_USE_BLUETOOTH   0 // 0: no Bluetooth, 1: compile BLE support (~1 MB of flash)
+#define CARUSOS_USE_AUDIO       1 // 0: Disable Audio and save RAM/Flash, 1: Enable ES8311 Audio
 #define CARUSOS_USE_FS          0 // 1: Enable FFat File System (needs FATFS partition scheme).
-                                  // Si el mount bootloopea en un device reflasheado muchas veces:
-                                  // basura previa en la region FAT. Fix una sola vez:
-                                  //   esptool erase_region 0x610000 0x9E0000
-                                  // (ver FABLE5_REVIEW.md, item 3)
-                                  // TEMP 2026-07-13: dejado en 0 porque, tras el erase, un
-                                  // find_volume() sobre la particion en blanco (0xFF) dispara
-                                  // el interrupt WDT en Core 0 (heap_caps_get_largest_free_block
-                                  // en cada sector leido via wear-levelling, contra el heap grande
-                                  // de PSRAM). Ver conversacion para el fix real (formatear una
-                                  // vez con begin(true) y volver a begin(false)).
-#define CARUSOS_USE_TELNET_LOG  1 // 1: Enable Telnet Log Server on port 23
+                                  // Currently 0: mounting the FAT partition at boot crashes on
+                                  // this board. Status and next steps: pendings.md -> Known bugs.
+#define CARUSOS_USE_TELNET_LOG  1 // 1: Telnet log server on port 23 (on/off at runtime in Options). 0: compiled out.
 #define CARUSOS_USE_OTA         1 // 1: Enable OTA Updates
-#define CARUSOS_DARK_MODE       1   
 
-// Configuraciones OTA (Over-The-Air)
-// CARUSOS_OTA_PASSWORD se define en secrets.h
+// OTA (Over-The-Air). CARUSOS_OTA_PASSWORD is defined in secrets.h.
 // (Only ArduinoOTA is implemented; the HTTP-pull OTA config was never wired up
 //  and has been removed to avoid phantom settings.)
 #define CARUSOS_OTA_HOSTNAME    "CarusOS_ESP32"
 
-// Aplicaciones Habilitadas (GUI)
-// 0: Ocultar apps deshabilitadas del menu (recomendado).
-// 1: Mostrarlas grisadas/no clickeables.
+// Apps (GUI)
+// 0: hide disabled apps from the menus (recommended).
+// 1: show them greyed out and non-clickable.
 #define CARUSOS_SHOW_DISABLED_APPS 0
-#define ENABLE_APP_SETTINGS     1
-#define CARUSOS_APP_EXPLORER    1 // 1: File Explorer (FS ops corren en Core 0 via cola)
-#define CARUSOS_APP_GALLERY     1 // 0: Disable Web Gallery, 1: Enable Web Gallery
+#define CARUSOS_APP_EXPLORER    0 // 1: File Explorer (FS ops run on Core 0). Needs CARUSOS_USE_FS.
+#define CARUSOS_APP_GALLERY     1 // 0: Disable Web Gallery, 1: Enable Web Gallery. Needs CARUSOS_USE_PNG.
 #define CARUSOS_USE_PNG         1 // 0: Disable PNG decoding (saves RAM/Flash), 1: Enable PNG decoding
-#define ENABLE_APP_GIF_DEMO     1
-#define ENABLE_APP_MIC_TEST     0
-#define ENABLE_APP_ANIM         0 // 0: App de animacion no se compila ni aparece. 1: Habilitada.
-#define ENABLE_APP_IMU          1 // 1: App de sensor de movimiento (IMU QMI8658). 0: no se compila.
+#define ENABLE_APP_MIC_TEST     0 // 1: ES7210 mic level meter. 0: compiled out.
+#define ENABLE_APP_ANIM         0 // 1: bouncing-sprite demo. 0: compiled out.
+#define ENABLE_APP_IMU          1 // 1: tilt demo on the QMI8658 IMU. 0: compiled out.
+
+// ---------------------------------------------------------------------------
+// Sanity checks: fail the build on flag combinations that cannot work, instead
+// of shipping an app that only says "disabled".
+// ---------------------------------------------------------------------------
+#if !CARUSOS_USE_WIFI
+#error "CARUSOS_USE_WIFI=0 is not implemented yet (WiFi is always compiled in)."
+#endif
+#if CARUSOS_APP_EXPLORER && !CARUSOS_USE_FS
+#error "CARUSOS_APP_EXPLORER needs CARUSOS_USE_FS=1."
+#endif
+#if CARUSOS_APP_GALLERY && !CARUSOS_USE_PNG
+#error "CARUSOS_APP_GALLERY needs CARUSOS_USE_PNG=1 (it shows a downloaded PNG)."
+#endif

@@ -1,4 +1,5 @@
 #include "carusos_config.h"
+#include "pin_config.h"
 
 #if ENABLE_APP_MIC_TEST
 #include <Arduino.h>

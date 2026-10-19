@@ -1,10 +1,10 @@
 # CarusOS 📱
 
-![Version](https://img.shields.io/badge/version-v0.44.0-blue)
+![Version](https://img.shields.io/badge/version-v0.44.1-blue)
 ![Platform](https://img.shields.io/badge/platform-ESP32--S3-green)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
-**CarusOS** is a lightweight, ultra-fast, multi-threaded Operating System for ESP32-S3 microcontrollers with RGB Touch displays, built heavily on top of **LVGL 9.x**. It is designed to be highly modular, extensible, and completely non-blocking.
+**CarusOS** is a lightweight, multi-threaded mini-OS for ESP32-S3 microcontrollers with RGB touch displays, built on top of **LVGL 9.x**. It is a hobby / learning project: modular, extensible, and designed so the UI never blocks on hardware or the network.
 
 ## 🧩 Configuration-Based — pay only for what you use
 
@@ -42,8 +42,8 @@ flash-footprint measurement.
 
 ## ✨ Features
 
-- **Multi-threaded Architecture:** Core 1 is 100% dedicated to UI rendering (60 FPS on LVGL 9), while Core 0 handles WiFi, NTP, and Audio processing asynchronously.
-- **Dynamic Window Manager:** Linux-style memory management. Windows (Apps) are instantiated dynamically when opened and their RAM is freed automatically when the `< Back` button is pressed using `LV_OBJ_FLAG_AUTO_DELETE`.
+- **Multi-threaded Architecture:** Core 1 is dedicated to LVGL rendering, while Core 0 handles WiFi, NTP, audio, OTA and storage. The UI hands hardware work to Core 0 through a command queue.
+- **Dynamic Window Manager:** each app window is created when opened and deleted after `< Back`; everything the app allocated (timers, buffers, state) is tied to its screen and freed with it.
 - **Zero-Footprint i18n:** Built-in multi-language engine using compile-time C++ macros (`CARUSOS_LANG_ES`), saving precious PSRAM.
 - **Hardware Integration:** 
   - I2S Audio Driver support (ES8311 Codec).
@@ -51,7 +51,8 @@ flash-footprint measurement.
 - **Live Background Services:**
   - NTP Client for real-time global Clock on the Status Bar.
   - Asynchronous background WiFi handling.
-- **Extensible File System & OTA:** Built-in support for FFat and explicit Over-The-Air updates.
+- **OTA updates:** explicit, per-session Over-The-Air mode (ArduinoOTA).
+- **File System (FFat) + File Explorer:** implemented, but **currently disabled** — mounting the FAT partition at boot crashes on this board. Status in [pendings.md](pendings.md).
 - **Remote Telnet Logging:** Debug your OS wirelessly without a serial cable! Just enable `CARUSOS_USE_TELNET_LOG` in `carusos_config.h`, connect your PC to the same WiFi, and run `telnet <ESP32_IP>` in your terminal. You can see the IP in the SysInfo app.
 
 ## 🚀 Compilation Settings (CRITICAL)
@@ -67,14 +68,17 @@ To compile CarusOS correctly and avoid bootloops, you **MUST** configure your Ar
 
 ### Dependencies
 
-Install these from the Arduino Library Manager (or as a `.zip`):
+Install these from the Arduino Library Manager (or as a `.zip`). The versions
+listed are the ones tested on hardware and pinned in CI; newer ones may work but
+aren't verified.
 
-- **LVGL** (v9.x) — UI engine
-- **GFX Library for Arduino** (`Arduino_GFX`) — RGB panel + ST7701 driver
-- **SensorLib** — provides the `TouchDrvGT911` capacitive touch driver
+- **ESP32 Arduino core** 3.3.10
+- **LVGL** 9.3.0 — UI engine
+- **GFX Library for Arduino** (`Arduino_GFX`) 1.6.0 — RGB panel + ST7701 driver
+- **SensorLib** 0.3.1 — GT911 touch, QMI8658 IMU and PCF85063 RTC drivers
 - **ESP_I2S** — audio (bundled with the ESP32 Arduino core v3.x)
 
-The ESP32 Arduino core (v3.x) ships the rest (`WiFi`, `Preferences`, `ArduinoOTA`, `HTTPClient`, `FFat`, `Wire`).
+The ESP32 Arduino core ships the rest (`WiFi`, `Preferences`, `ArduinoOTA`, `HTTPClient`, `FFat`, `Wire`).
 
 > Target board: **Waveshare ESP32-S3-Touch-LCD-4B** (480x480, ST7701 + GT911). The pin map lives in `pin_config.h` and `lvgl_port.cpp`.
 
@@ -93,10 +97,14 @@ so your credentials and personal settings never leave your machine.
 
 ## 📁 Project Structure
 
-CarusOS is structured to be easily portable.
-- `carusos_config.h`: Master configuration file. Turn features (Audio, FS, OTA) ON/OFF here to save RAM/Flash.
-- `ui_core.cpp`: Core 1 UI logic (LVGL).
-- `backend_core.cpp`: Core 0 Background logic (WiFi, NTP, FS).
+All of it lives in the sketch folder `ESP32-S3/CarusOS_ESP32S3/`:
+
+- `carusos_config.h`: Master configuration file. Turn features (Audio, FS, OTA, apps) ON/OFF here to save RAM/Flash.
+- `pin_config.h`: every pin (audio codec, I2C bus, I/O expander).
+- `ui_core.cpp`: Core 1 shell — boot screen, desktop, app registry, windows.
+- `src/apps/`: the apps, one file each (or one per group of small ones).
+- `backend_core.cpp`: Core 0 background logic (WiFi, NTP, RTC, audio, FS, OTA, Telnet).
+- `lvgl_port.cpp`: display, touch and backlight glue for the Waveshare board.
 - `customizations/secrets.h`: Your WiFi/OTA credentials (gitignored — create it from `customizations/secrets.h.example`).
 - `customizations/config_local.h`: Personal, non-secret build config like the Gallery demo URL (gitignored — create it from `customizations/config_local.h.example`).
 

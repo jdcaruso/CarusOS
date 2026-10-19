@@ -40,6 +40,17 @@
   - Animation app (`ENABLE_APP_ANIM`): code-driven LVGL sprite demo.
   - Mic Test app (`ENABLE_APP_MIC_TEST`): ES7210 capture + live level meter.
 
+- **Phase 12: Onboard hardware & hardening** *(v0.37.0 – v0.44.1)*
+  - Motion app (QMI8658 IMU), Date & Time app with the PCF85063 RTC (clock
+    survives reboots without WiFi).
+  - WiFi on/off persisted in NVS; tabbed Sys Info with the chip list.
+  - Telnet log goes through a queue (Core 0 owns the socket); FS work moved to
+    Core 0; expander mutex; framebuffer pushed only when dirty.
+  - Compile-check CI with `arduino-cli`, libraries pinned.
+  - Personal config split into `customizations/` (`secrets.h`, `config_local.h`).
+  - Apps split into `src/apps/`, with every app's resources tied to its screen
+    (`LV_EVENT_DELETE`).
+
 ## 🎯 Current Focus
 
 - **Device ↔ Server connectivity (NEXT):** Connect the device to a backend
@@ -48,8 +59,8 @@
   flows (telemetry up / commands down / both), auth, and whether the server is
   local or cloud. This is the next big feature to design.
 
-> Pending hardware test: **v0.34.0** (app registry) and **v0.35.0** (inter-core
-> queue) compile clean but still need to be flashed and verified on the device.
+> Pending hardware test and open bugs (File System, Mic/speaker hand-off) are
+> tracked in [pendings.md](pendings.md).
 
 ## 🏗️ Architecture & Infrastructure
 
@@ -57,13 +68,13 @@ Improvements that make CarusOS a more "real" OS and an easier project to
 contribute to.
 
 - **PlatformIO support:** Add a `platformio.ini` pinning board, build flags and
-  library versions, so the project builds without hand-tuning Arduino IDE.
-- **CI build (GitHub Actions):** Compile on every push to catch breakage early —
-  the pragmatic equivalent of tests for embedded.
+  library versions, so the project builds without hand-tuning Arduino IDE. It
+  also unlocks a custom sdkconfig (e.g. IRAM-safe RGB/GDMA ISRs for flash writes
+  while the panel runs).
 - **CONTRIBUTING.md + screenshots/GIF in the README.**
-- **Config hygiene (pending):** `ENABLE_APP_GIF_DEMO` in `carusos_config.h` is
-  defined but unused (a "phantom" flag). Keep for now; either implement a GIF
-  app or remove it.
+- **Compile WiFi out:** `CARUSOS_USE_WIFI` must stay 1 for now (an `#error`
+  enforces it). Making it a real flag means gating NTP, OTA, Telnet and the
+  Gallery behind it.
 - **Build-size discipline:** every optional feature must compile out completely
   when its flag is 0 (zero flash/RAM). Track the compiled size per release —
   the Arduino IDE prints `Sketch uses N bytes (X%)` after each build. Big-ticket
@@ -92,7 +103,9 @@ suite:
   hardware-tested.)*
 - **On-Screen Keyboard:** Implement an LVGL keyboard to enter WiFi credentials dynamically without hardcoding them in `secrets.h`.
 - **WiFi config via UI + NVS:** Store credentials in NVS (`Preferences`) entered through the keyboard, removing the need to edit `secrets.h` for end users.
-- **File Explorer:** A UI app to list files on the FATFS partition or an external MicroSD card.
+- **File Explorer v2:** the app exists (lists the FATFS partition, formats on
+  demand) but is off until the FS boot bug is fixed. Next: browse folders, the
+  microSD card, open files.
 - **Audio MP3 Player:** Extend the I2S driver to read `.mp3` or `.wav` files from the File System instead of generating a sine wave.
 - **Deep Sleep:** True battery-saving deep sleep mode with wake-on-touch capabilities.
 - **Inactivity timeout:** Auto-dim/sleep the backlight after N seconds without touch.

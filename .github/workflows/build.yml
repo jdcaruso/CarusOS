@@ -43,10 +43,13 @@ jobs:
           arduino-cli core install esp32:esp32@3.3.10
 
       - name: Install libraries
+        # Pinned to the versions the firmware is tested with on hardware, so a
+        # new upstream release (e.g. a breaking LVGL bump) can't silently break
+        # the build. Bump these together with the README when upgrading.
         run: |
-          arduino-cli lib install "lvgl"
-          arduino-cli lib install "GFX Library for Arduino"
-          arduino-cli lib install "SensorLib"
+          arduino-cli lib install "lvgl@9.3.0"
+          arduino-cli lib install "GFX Library for Arduino@1.6.0"
+          arduino-cli lib install "SensorLib@0.3.1"
           # ESP_I2S ships with the ESP32 core (no separate install needed).
 
       - name: Provide lv_conf.h to LVGL
