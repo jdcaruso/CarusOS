@@ -40,12 +40,13 @@
   - Animation app (`ENABLE_APP_ANIM`): code-driven LVGL sprite demo.
   - Mic Test app (`ENABLE_APP_MIC_TEST`): ES7210 capture + live level meter.
 
-- **Phase 12: Onboard hardware & hardening** *(v0.37.0 – v0.45.0)*
+- **Phase 12: Onboard hardware & hardening** *(v0.37.0 – v0.46.0)*
   - Motion app (QMI8658 IMU), Date & Time app with the PCF85063 RTC (clock
     survives reboots without WiFi).
   - WiFi on/off persisted in NVS; tabbed Sys Info with the chip list.
   - v0.45.0: libraries updated (LVGL 9.5.0, SensorLib 0.4.1, Arduino_GFX
     1.6.6); Animation and Mic Test apps enabled.
+  - v0.46.0: AXP2101 battery/USB status in the status bar and Sys Info.
   - Telnet log goes through a queue (Core 0 owns the socket); FS work moved to
     Core 0; expander mutex; framebuffer pushed only when dirty.
   - Compile-check CI with `arduino-cli`, libraries pinned.
@@ -92,10 +93,24 @@ suite:
   auto-rotate the screen, step counter, level/bubble, shake gestures, tilt games.
 - **PCF85063 — RTC (battery-backed real-time clock).** Keep the time without
   WiFi/NTP; survives reboots. Today the clock only comes from NTP.
-- **AXP2101 — power management IC.** Battery voltage / charge state / current;
-  a battery indicator in the status bar, low-power warnings.
-- **microSD slot (SD_MMC).** External storage for files, audio, images — bigger
-  than the internal FATFS partition.
+- **AXP2101 — power management IC.** *Done in v0.46.0:* battery %, voltage, USB
+  and charging in the status bar and Sys Info (`CARUSOS_USE_PMU`). Still open:
+  low-battery warning, reading the PWR key (EXIO4).
+- ~~**microSD slot (SD_MMC).**~~ **Not on this board.** The official 4B
+  schematic has no TF socket and no free GPIOs for one (checked 2026-10-19).
+  Storage stays the internal FATFS partition, or an external SPI module on a
+  different board.
+
+Board facts from the official schematic (`ESP32-S3-Touch-LCD-4B.pdf`), so nobody
+has to re-derive them:
+
+- **Backlight = GPIO4** (`BL`, into an AP3032 LED driver, PWM-capable).
+- **TCA9554 expander:** EXIO0-2 LCD SPI (CS/SDA/SCL, panel init), EXIO3 amp
+  enable, EXIO4 PWR key state (low while pressed), EXIO5 touch reset, EXIO6 touch
+  INT, EXIO7 LCD reset. The expander's own INT pin is not wired to the ESP32.
+- **No interrupt line reaches the ESP32** from the touch, the AXP2101, the RTC
+  or the IMU. Deep-sleep wake sources: the BOOT button (GPIO0) and the timer.
+- PWR key goes to the AXP2101 `PWRON` input (power on/off in hardware).
 
 ## 🚀 Future Ideas (Pending)
 
@@ -106,8 +121,8 @@ suite:
 - **On-Screen Keyboard:** Implement an LVGL keyboard to enter WiFi credentials dynamically without hardcoding them in `secrets.h`.
 - **WiFi config via UI + NVS:** Store credentials in NVS (`Preferences`) entered through the keyboard, removing the need to edit `secrets.h` for end users.
 - **File Explorer v2:** the app exists (lists the FATFS partition, formats on
-  demand) but is off until the FS boot bug is fixed. Next: browse folders, the
-  microSD card, open files.
+  demand) but is off until the FS boot bug is fixed. Next: browse folders, open
+  files.
 - **Audio MP3 Player:** Extend the I2S driver to read `.mp3` or `.wav` files from the File System instead of generating a sine wave.
 - **Deep Sleep:** True battery-saving deep sleep mode with wake-on-touch capabilities.
 - **Inactivity timeout:** Auto-dim/sleep the backlight after N seconds without touch.

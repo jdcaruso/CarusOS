@@ -7,6 +7,11 @@ cause, workaround, ruled-out hypothesis), it goes into the entry below.
 
 ## 🔬 Needs a hardware test
 
+- [ ] **v0.46.0 (AXP2101 battery status).** Flashed 2026-10-19; serial log shows
+  `[PMU] AXP2101 ready.` and `battery=no, usb=1` (board on USB, no battery).
+  To check: the USB icon left of the WiFi icon (desktop and app title bars), the
+  Battery line in Sys Info, and **with a LiPo connected** that % / mV look sane
+  and the bolt shows while charging. The battery path is untested.
 - [ ] **v0.45.0 (library update + more apps).** Flashed 2026-10-19 by cable; boot,
   WiFi, NTP and the RTC checked on the serial log only (nobody looked at the
   screen). Built with LVGL 9.5.0, SensorLib 0.4.1, Arduino_GFX 1.6.6 (stock, the

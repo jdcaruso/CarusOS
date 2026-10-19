@@ -60,6 +60,9 @@
     #define TXT_DISCONNECTED     "Desconectado"
     // Sys Info: stats + hardware tabs
     #define TXT_SI_AUDIO_VOL     "Volumen de audio"
+    #define TXT_SI_BATTERY       "Bateria"
+    #define TXT_SI_CHARGING      "cargando"
+    #define TXT_SI_NO_BATTERY    "no conectada (USB)"
     #define TXT_SI_MEMORY        "-- Memoria (Libre / Total) --"
     #define TXT_SI_STORAGE       "Almacenamiento (APP)"
     #define TXT_SI_FLASH_TOTAL   "Flash total"
@@ -139,6 +142,9 @@
     #define TXT_DISCONNECTED     "Disconnected"
     // Sys Info: stats + hardware tabs
     #define TXT_SI_AUDIO_VOL     "Audio Volume"
+    #define TXT_SI_BATTERY       "Battery"
+    #define TXT_SI_CHARGING      "charging"
+    #define TXT_SI_NO_BATTERY    "not connected (USB)"
     #define TXT_SI_MEMORY        "-- Memory (Free / Total) --"
     #define TXT_SI_STORAGE       "Storage (APP)"
     #define TXT_SI_FLASH_TOTAL   "Flash total"

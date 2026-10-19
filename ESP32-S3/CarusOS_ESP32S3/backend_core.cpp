@@ -8,6 +8,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include "rtc_pcf85063.h"
+#include "pmu_axp2101.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/queue.h>
@@ -59,6 +60,15 @@ static volatile bool wifi_connected = false;
 static volatile bool play_audio = false;
 static volatile int audio_volume = 70; // 0-100
 static volatile bool ota_enabled = false;
+
+#if CARUSOS_USE_PMU
+// Power status, written by Task_Backend every 5 s, read by the UI.
+static volatile bool pmu_ok = false;
+static volatile int  pmu_percent = -1;
+static volatile bool pmu_charging = false;
+static volatile bool pmu_usb = false;
+static volatile int  pmu_batt_mv = 0;
+#endif
 
 // ---------------------------------------------------------------------------
 // UI -> Backend command queue
@@ -375,6 +385,10 @@ static void Task_Backend(void *pvParameters) {
     }
 #endif
 
+#if CARUSOS_USE_PMU
+    pmu_ok = pmu_begin();
+#endif
+
     if (runtime_wifi_enabled) {
         Serial.println("[Backend] Starting WiFi Connection...");
         WiFi.mode(WIFI_STA);
@@ -473,6 +487,29 @@ static void Task_Backend(void *pvParameters) {
         }
 #endif
 
+#if CARUSOS_USE_PMU
+        // Battery status changes slowly: a handful of I2C reads every 5 s.
+        static uint32_t pmu_last_ms = 0;
+        if (pmu_ok && (pmu_last_ms == 0 || millis() - pmu_last_ms > 5000)) {
+            pmu_last_ms = millis();
+            pmu_status_t ps;
+            if (pmu_read(ps)) {
+                static int last_state = -1; // log only when battery/USB/charging changes
+                int state = (ps.battery << 2) | (ps.usb << 1) | ps.charging;
+                if (state != last_state) {
+                    last_state = state;
+                    Serial.printf("[PMU] battery=%s %d%% %d mV, usb=%d, charging=%d\n",
+                                  ps.battery ? "yes" : "no", ps.percent, ps.batt_mv,
+                                  (int)ps.usb, (int)ps.charging);
+                }
+                pmu_percent  = ps.percent;
+                pmu_charging = ps.charging;
+                pmu_usb      = ps.usb;
+                pmu_batt_mv  = ps.batt_mv;
+            }
+        }
+#endif
+
         if (ota_enabled) {
 #if CARUSOS_USE_OTA
             ArduinoOTA.handle();
@@ -526,6 +563,19 @@ void backend_core_init() {
         &TaskBackend,
         0 // Core 0!
     );
+}
+
+bool backend_get_power(int &percent, bool &charging, bool &usb, int &batt_mv) {
+#if CARUSOS_USE_PMU
+    if (!pmu_ok) return false;
+    percent  = pmu_percent;
+    charging = pmu_charging;
+    usb      = pmu_usb;
+    batt_mv  = pmu_batt_mv;
+    return true;
+#else
+    return false;
+#endif
 }
 
 bool backend_is_wifi_connected() {

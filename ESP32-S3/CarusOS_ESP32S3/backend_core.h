@@ -11,6 +11,10 @@ bool backend_is_wifi_connected();
 // Full date+time (system clock: NTP-synced or RTC-seeded). True if valid.
 bool backend_get_datetime(struct tm &out);
 
+// Power (AXP2101, polled on Core 0). False if the PMU is off or not found;
+// percent is -1 without a battery.
+bool backend_get_power(int &percent, bool &charging, bool &usb, int &batt_mv);
+
 // Audio control
 void backend_set_audio_state(bool play);
 void backend_set_audio_volume(int volume);

@@ -51,6 +51,7 @@ jobs:
           arduino-cli lib install "lvgl@9.5.0"
           arduino-cli lib install "GFX Library for Arduino@1.6.6"
           arduino-cli lib install "SensorLib@0.4.1"
+          arduino-cli lib install "XPowersLib@0.3.3"
           # ESP_I2S ships with the ESP32 core (no separate install needed).
 
       - name: Provide lv_conf.h to LVGL

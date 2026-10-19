@@ -1,6 +1,6 @@
 # CarusOS 📱
 
-![Version](https://img.shields.io/badge/version-v0.45.0-blue)
+![Version](https://img.shields.io/badge/version-v0.46.0-blue)
 ![Platform](https://img.shields.io/badge/platform-ESP32--S3-green)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
@@ -38,6 +38,7 @@ flash-footprint measurement.
 | Mic Test (ES7210) | `ENABLE_APP_MIC_TEST` | `es7210.cpp` + `es7210.h` + `mic_es7210.cpp` + `mic_es7210.h` | ~31 KB |
 | IMU / Motion | `ENABLE_APP_IMU` | `imu_qmi8658.cpp` + `.h` *(full driver in SensorLib)* | ~1.8 KB |
 | RTC clock | `CARUSOS_USE_RTC` | `rtc_pcf85063.cpp` + `.h` *(full driver in SensorLib)* | ~1.5 KB |
+| Battery / PMU (AXP2101) | `CARUSOS_USE_PMU` | `pmu_axp2101.cpp` + `.h` *(full driver in XPowersLib)* | ~2.0 KB |
 | WiFi · NTP · OTA · FS · Telnet · BLE | *(various)* | inline in `backend_core.cpp`, gated by `#if` | — |
 
 ## ✨ Features
@@ -76,6 +77,7 @@ aren't verified.
 - **LVGL** 9.5.0 — UI engine
 - **GFX Library for Arduino** (`Arduino_GFX`) **1.6.5 or newer** (CI uses 1.6.6) — RGB panel + ST7701 driver. Older releases don't compile on ESP32 core 3.3.x.
 - **SensorLib** 0.4.1 — GT911 touch, QMI8658 IMU and PCF85063 RTC drivers
+- **XPowersLib** 0.3.3 — AXP2101 power-management (battery) driver
 - **ESP_I2S** — audio (bundled with the ESP32 Arduino core v3.x)
 
 The ESP32 Arduino core ships the rest (`WiFi`, `Preferences`, `ArduinoOTA`, `HTTPClient`, `FFat`, `Wire`).
@@ -170,7 +172,7 @@ All of it lives in the sketch folder `ESP32-S3/CarusOS_ESP32S3/`:
 - `pin_config.h`: every pin (audio codec, I2C bus, I/O expander).
 - `ui_core.cpp`: Core 1 shell — boot screen, desktop, app registry, windows.
 - `src/apps/`: the apps, one file each (or one per group of small ones).
-- `backend_core.cpp`: Core 0 background logic (WiFi, NTP, RTC, audio, FS, OTA, Telnet).
+- `backend_core.cpp`: Core 0 background logic (WiFi, NTP, RTC, battery/PMU, audio, FS, OTA, Telnet).
 - `lvgl_port.cpp`: display, touch and backlight glue for the Waveshare board.
 - `customizations/secrets.h`: Your WiFi/OTA credentials (gitignored — create it from `customizations/secrets.h.example`).
 - `customizations/config_local.h`: Personal, non-secret build config like the Gallery demo URL (gitignored — create it from `customizations/config_local.h.example`).

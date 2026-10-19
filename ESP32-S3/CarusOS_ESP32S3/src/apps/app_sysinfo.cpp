@@ -14,9 +14,20 @@ static void sysinfo_tick_cb(lv_timer_t * t) {
     if (warnings.length() > 0) warnings = "\n" TXT_SI_ALERTS "\n" + warnings;
 
     bool wifi = backend_is_wifi_connected();
+
+    char power[64] = "";
+    int pct, mv; bool chg, usb;
+    if (backend_get_power(pct, chg, usb, mv)) {
+        if (pct >= 0)
+            snprintf(power, sizeof(power), TXT_SI_BATTERY ": %d%% (%d mV)%s\n", pct, mv,
+                     chg ? " " TXT_SI_CHARGING : "");
+        else
+            snprintf(power, sizeof(power), TXT_SI_BATTERY ": " TXT_SI_NO_BATTERY "\n");
+    }
     lv_label_set_text_fmt(stats,
         "CarusOS " CARUSOS_VERSION "\n\n"
         "WiFi: %s (%s)\n"
+        "%s"
         TXT_SI_AUDIO_VOL ": %d%%\n\n"
         TXT_SI_MEMORY "\n"
         "RAM (Heap): %d / %d KB\n"
@@ -28,6 +39,7 @@ static void sysinfo_tick_cb(lv_timer_t * t) {
         TXT_SI_BUILD_DATE ": " __DATE__ " " __TIME__,
         wifi ? TXT_CONNECTED : TXT_DISCONNECTED,
         wifi ? backend_get_ip().c_str() : "-",
+        power,
         backend_get_audio_volume(),
         (int)(f_heap / 1024), (int)(t_heap / 1024),
         (int)(f_psram / 1024), (int)(t_psram / 1024),
@@ -87,7 +99,10 @@ void app_build_sysinfo(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * tit
 #if CARUSOS_USE_RTC
         "RTC: PCF85063\n"
 #endif
-        "PMU: AXP2101",
+#if CARUSOS_USE_PMU
+        "PMU: AXP2101"
+#endif
+        "",
         ESP.getChipModel(), ESP.getChipRevision(),
         ESP.getChipCores(), (int)ESP.getCpuFreqMHz(),
         (int)(ESP.getFlashChipSize() / (1024 * 1024)),

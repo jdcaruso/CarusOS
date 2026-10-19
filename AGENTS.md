@@ -7,7 +7,9 @@ This is the single canonical copy: `CLAUDE.md` and `GEMINI.md` only point here.
 
 A lightweight, multi-threaded mini-OS for the **ESP32-S3** with an RGB touch
 display, built on **LVGL 9.x**. Target hardware: **Waveshare ESP32-S3-Touch-LCD-4B**
-(480x480, ST7701 panel + GT911 touch, ES8311 audio codec, XCA9554 I/O expander).
+(480x480, ST7701 panel + GT911 touch, ES8311 audio codec, XCA9554 I/O expander,
+AXP2101 power management). Pin facts from the official schematic: `ROADMAP.md`
+→ onboard chips.
 
 This is a hobby / learning project and a **public** repository. Keep that in mind:
 no secrets in committed files, keep docs honest, prefer clarity over cleverness.
@@ -68,6 +70,7 @@ LVGL callback.
 | `es8311.*`, `audio_hal.h` | Speaker codec driver |
 | `es7210.*`, `mic_es7210.*` | Microphone ADC driver + capture task (Mic Test app) |
 | `imu_qmi8658.*`, `rtc_pcf85063.*` | Thin wrappers over SensorLib for the IMU and RTC |
+| `pmu_axp2101.*` | Read-only AXP2101 wrapper (XPowersLib): battery %, USB, charging. Never writes rails/charger |
 | `lv_conf.h` | LVGL configuration |
 
 Files under `src/` include sketch-root headers with relative paths
@@ -135,7 +138,7 @@ PSRAM `OPI PSRAM`, Flash Mode `QIO 80MHz`. Wrong settings cause bootloops or a
 very slow UI.
 
 Dependencies (pinned in CI): ESP32 Arduino core 3.3.10, LVGL 9.5.0, GFX Library
-for Arduino 1.6.6, SensorLib 0.4.1. ESP_I2S ships with the core. GFX must be
+for Arduino 1.6.6, SensorLib 0.4.1, XPowersLib 0.3.3. ESP_I2S ships with the core. GFX must be
 >= 1.6.5: older releases call the pre-3.3 `spiFrequencyToClockDiv()` signature and
 fail to compile on core 3.3.x.
 

@@ -123,13 +123,45 @@ void * ui_screen_alloc(lv_obj_t * screen, size_t size) {
 typedef struct {
     lv_obj_t * wifi;
     lv_obj_t * time;
+    lv_obj_t * batt; // NULL when the PMU is compiled out
 } status_bar_t;
 
 static status_bar_t main_bar;
 
-static void status_bar_refresh(const status_bar_t * sb, lv_color_t wifi_col, const struct tm * dt) {
+// Battery icon text for the status bar: level, plus a bolt while charging.
+// USB symbol when running from USB without a battery. "" if no PMU.
+static const char * battery_symbol() {
+    int pct, mv; bool chg, usb;
+    if (!backend_get_power(pct, chg, usb, mv)) return "";
+    if (pct < 0) return usb ? LV_SYMBOL_USB : "";
+    const char * lvl = pct > 80 ? LV_SYMBOL_BATTERY_FULL :
+                       pct > 55 ? LV_SYMBOL_BATTERY_3 :
+                       pct > 30 ? LV_SYMBOL_BATTERY_2 :
+                       pct > 10 ? LV_SYMBOL_BATTERY_1 : LV_SYMBOL_BATTERY_EMPTY;
+    static char buf[16];
+    snprintf(buf, sizeof(buf), "%s%s", chg ? LV_SYMBOL_CHARGE : "", lvl);
+    return buf;
+}
+
+static void status_bar_refresh(const status_bar_t * sb, lv_color_t wifi_col, const struct tm * dt,
+                               const char * batt) {
     lv_obj_set_style_text_color(sb->wifi, wifi_col, 0);
     if (dt) lv_label_set_text_fmt(sb->time, "%02d:%02d", dt->tm_hour, dt->tm_min);
+    if (sb->batt) lv_label_set_text(sb->batt, batt);
+}
+
+// The battery icon sits left of the WiFi icon.
+static lv_obj_t * status_bar_add_battery(lv_obj_t * bar) {
+#if CARUSOS_USE_PMU
+    lv_obj_t * b = lv_label_create(bar);
+    lv_label_set_text(b, "");
+    lv_obj_set_style_text_color(b, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_align(b, LV_ALIGN_RIGHT_MID, -40, 0);
+    return b;
+#else
+    (void)bar;
+    return NULL;
+#endif
 }
 
 static void ui_poll_timer_cb(lv_timer_t * timer) {
@@ -140,12 +172,13 @@ static void ui_poll_timer_cb(lv_timer_t * timer) {
     struct tm dt;
     const struct tm * dtp = backend_get_datetime(dt) ? &dt : NULL;
 
-    status_bar_refresh(&main_bar, wifi_col, dtp);
+    const char * batt = battery_symbol();
+    status_bar_refresh(&main_bar, wifi_col, dtp, batt);
 
     lv_obj_t * act = lv_scr_act();
     if (act != main_screen) {
         const status_bar_t * sb = (const status_bar_t *)lv_obj_get_user_data(act);
-        if (sb) status_bar_refresh(sb, wifi_col, dtp);
+        if (sb) status_bar_refresh(sb, wifi_col, dtp, batt);
     }
 }
 
@@ -197,10 +230,12 @@ static void create_app_window(const carusos_app_t * app, lv_obj_t * return_scree
         lv_obj_set_style_text_color(sb->wifi, lv_color_hex(0x555555), 0);
         lv_obj_align(sb->wifi, LV_ALIGN_RIGHT_MID, -10, 0);
 
+        sb->batt = status_bar_add_battery(top_bar);
+
         sb->time = lv_label_create(top_bar);
         lv_label_set_text(sb->time, "");
         lv_obj_set_style_text_color(sb->time, lv_color_hex(0xFFFFFF), 0);
-        lv_obj_align(sb->time, LV_ALIGN_RIGHT_MID, -40, 0);
+        lv_obj_align(sb->time, LV_ALIGN_RIGHT_MID, CARUSOS_USE_PMU ? -85 : -40, 0);
 
         lv_obj_set_user_data(app_screen, sb);
     }
@@ -294,6 +329,8 @@ static void create_main_screen() {
     lv_label_set_text(main_bar.wifi, LV_SYMBOL_WIFI);
     lv_obj_set_style_text_color(main_bar.wifi, lv_color_hex(0x555555), 0); // Offline dark color
     lv_obj_align(main_bar.wifi, LV_ALIGN_RIGHT_MID, -10, 0);
+
+    main_bar.batt = status_bar_add_battery(status_bar);
 
     // App Launcher Grid Container
     lv_obj_t * app_grid = lv_obj_create(main_screen);
