@@ -66,21 +66,25 @@ void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
 
 static bool backlight_state = true;
 
+// The backlight is active LOW (measured on the board 2026-10-19: GPIO4 high =
+// dark, low = lit). PWM duty is inverted accordingly: 0 = full brightness.
+#define BL_DUTY(on) ((on) ? 0 : 255)
+
 // Backlight on GPIO4 (LEDC PWM). Before v0.46.1 this toggled expander pin 5,
 // which is actually the touch reset: "Sleep" reset the touch controller
 // instead of turning the screen off.
 void lvgl_port_set_backlight(bool state) {
     backlight_state = state;
-    ledcWrite(PIN_LCD_BL, state ? 255 : 0);
+    ledcWrite(PIN_LCD_BL, BL_DUTY(state));
 }
 
 // GPIOs float in deep sleep and the backlight would come back on, so drive
-// GPIO4 low and hold it. lvgl_port_init() releases the hold on the next boot.
+// GPIO4 high (= off) and hold it. lvgl_port_init() releases the hold on the next boot.
 void lvgl_port_prepare_deep_sleep() {
     backlight_state = false;
     ledcDetach(PIN_LCD_BL);
     pinMode(PIN_LCD_BL, OUTPUT);
-    digitalWrite(PIN_LCD_BL, LOW);
+    digitalWrite(PIN_LCD_BL, HIGH);
     gpio_hold_en((gpio_num_t)PIN_LCD_BL);
     gpio_deep_sleep_hold_en();
     lvgl_port_set_audio_amp(false);
@@ -159,10 +163,10 @@ void lvgl_port_init() {
   delay(200);
   expander->pinMode(EXP_PIN_TP_INT, INPUT);
 
-  // Backlight: GPIO4 PWM, full on. Released from a deep-sleep hold first, if any.
+  // Backlight: GPIO4 PWM (active low), full on. Released from a deep-sleep hold first, if any.
   gpio_hold_dis((gpio_num_t)PIN_LCD_BL);
   ledcAttach(PIN_LCD_BL, 20000, 8);
-  ledcWrite(PIN_LCD_BL, 255);
+  ledcWrite(PIN_LCD_BL, BL_DUTY(true));
 
   if (!gfx->begin()) {
     Serial.println("gfx->begin() failed!");

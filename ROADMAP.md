@@ -105,7 +105,7 @@ suite:
 Board facts from the official schematic (`ESP32-S3-Touch-LCD-4B.pdf`), so nobody
 has to re-derive them:
 
-- **Backlight = GPIO4** (`BL`, into an AP3032 LED driver, PWM-capable).
+- **Backlight = GPIO4** (`BL`, into an AP3032 LED driver, PWM-capable), **active low**: low = lit (measured).
 - **TCA9554 expander:** EXIO0-2 LCD SPI (CS/SDA/SCL, panel init), EXIO3 amp
   enable, EXIO4 PWR key state (low while pressed), EXIO5 touch reset, EXIO6 touch
   INT, EXIO7 LCD reset. The expander's own INT pin is not wired to the ESP32.

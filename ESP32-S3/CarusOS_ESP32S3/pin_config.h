@@ -12,7 +12,8 @@
 #define PIN_I2C_SCL           48
 
 // LCD backlight: GPIO4 drives the CTRL pin of the AP3032 LED driver
-// (PWM-capable; high = on). From the board schematic (net "BL").
+// (PWM-capable). From the board schematic (net "BL"). Active LOW: low = lit,
+// high = dark (measured on the board).
 #define PIN_LCD_BL            4
 
 // XCA9554 I/O-expander channels (NOT GPIOs), from the board schematic.

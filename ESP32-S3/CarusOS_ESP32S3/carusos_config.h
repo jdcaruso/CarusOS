@@ -9,7 +9,7 @@
 // one file that needs it, so the rest of the build never sees the passwords.
 #include "customizations/config_local.h"
 
-#define CARUSOS_VERSION         "v0.47.0"
+#define CARUSOS_VERSION         "v0.47.1"
 #define CARUSOS_AUTHOR          "Javier D. Caruso"
 #define CARUSOS_SOURCE_DATE     "2026-10-19"
 #define CARUSOS_LANG_ES         1 // 1 for Spanish, 0 for English
