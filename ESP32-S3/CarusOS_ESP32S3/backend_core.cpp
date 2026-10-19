@@ -24,6 +24,7 @@ bool runtime_use_telnet = true;
 bool runtime_use_animations = false;
 bool runtime_use_bluetooth = false;
 bool runtime_wifi_enabled = true;
+bool runtime_dash_alert = true;
 
 #if CARUSOS_USE_BLUETOOTH
 #include <BLEDevice.h>
@@ -59,6 +60,13 @@ TaskHandle_t TaskBackend;
 static volatile bool wifi_connected = false;
 static volatile bool play_audio = false;
 static volatile int audio_volume = 70; // 0-100
+#if CARUSOS_DASHBOARD_ALERT
+// One short beep request (UI -> audio task): volume first, then the length,
+// which the audio task reads and clears. Single words, one writer each side.
+static volatile int beep_volume = 0;
+static volatile int beep_ms = 0;
+static volatile bool speaker_released = false; // the mic took the I2S pins
+#endif
 static volatile bool ota_enabled = false;
 
 #if CARUSOS_USE_PMU
@@ -84,6 +92,7 @@ typedef enum {
     BCMD_SET_ANIMATIONS,
     BCMD_SET_BLUETOOTH,
     BCMD_SET_WIFI,
+    BCMD_SET_DASH_ALERT,
     BCMD_FS_LIST,     // list files (FFat runs on Core 0; result via backend_fs_poll)
     BCMD_FS_FORMAT,   // format/mount FFat on demand (slow; must not block the UI core)
 } backend_cmd_type_t;
@@ -119,6 +128,7 @@ static void do_enable_ota();
 static void do_wifi_reconnect();
 static void do_set_telnet(bool enable);
 static void do_set_animations(bool enable);
+static void do_set_dash_alert(bool enable);
 static void do_set_bluetooth(bool enable);
 static void do_set_wifi(bool enable);
 static void do_fs_list();
@@ -303,6 +313,18 @@ static void Task_Audio(void *pvParameters) {
     }
 
     while (1) {
+#if CARUSOS_DASHBOARD_ALERT
+        if (beep_ms > 0) {
+            int chunks = beep_ms / 25; // the buffer is 25 ms, a whole number of cycles
+            beep_ms = 0;
+            if (!play_audio && sine_buffer) {
+                es8311_voice_volume_set(es_handle, beep_volume, NULL);
+                for (int i = 0; i < chunks; i++)
+                    i2s.write((uint8_t *)sine_buffer, num_samples * 2 * sizeof(int16_t));
+                last_vol = -1; // restore the user volume below
+            }
+        }
+#endif
         if (last_vol != audio_volume) {
             last_vol = audio_volume;
             es8311_voice_volume_set(es_handle, last_vol, NULL);
@@ -329,6 +351,9 @@ static void Task_Audio(void *pvParameters) {
 void backend_mic_start() {
 #if ENABLE_APP_MIC_TEST
     play_audio = false;
+#if CARUSOS_DASHBOARD_ALERT
+    speaker_released = true; // no beeps until reboot (see pendings.md)
+#endif
 #if CARUSOS_USE_AUDIO
     i2s.end(); // release the speaker I2S so the mic can own the shared clock pins
 #endif
@@ -365,6 +390,7 @@ static void Task_Backend(void *pvParameters) {
     runtime_use_animations = preferences.getBool("anim", false);
     runtime_use_bluetooth  = preferences.getBool("bt", false);
     runtime_wifi_enabled   = preferences.getBool("wifi", true);
+    runtime_dash_alert     = preferences.getBool("dashbeep", true);
     Serial.printf("[NVS] loaded: wifi=%d telnet=%d anim=%d bt=%d\n",
                   (int)runtime_wifi_enabled, (int)runtime_use_telnet,
                   (int)runtime_use_animations, (int)runtime_use_bluetooth);
@@ -447,6 +473,7 @@ static void Task_Backend(void *pvParameters) {
                 case BCMD_SET_ANIMATIONS:  do_set_animations(cmd.arg != 0); break;
                 case BCMD_SET_BLUETOOTH:   do_set_bluetooth(cmd.arg != 0);  break;
                 case BCMD_SET_WIFI:        do_set_wifi(cmd.arg != 0);       break;
+                case BCMD_SET_DASH_ALERT:  do_set_dash_alert(cmd.arg != 0); break;
                 case BCMD_FS_LIST:         do_fs_list();                    break;
                 case BCMD_FS_FORMAT:       do_fs_format();                  break;
             }
@@ -638,6 +665,20 @@ static void do_set_animations(bool enable) {
     preferences.putBool("anim", enable);
 }
 
+bool backend_get_dash_alert() {
+    return runtime_dash_alert;
+}
+
+void backend_set_dash_alert(bool enable) {
+    runtime_dash_alert = enable;
+    backend_cmd_t cmd = { BCMD_SET_DASH_ALERT, enable ? 1 : 0 };
+    if (backend_queue) xQueueSend(backend_queue, &cmd, 0);
+}
+
+static void do_set_dash_alert(bool enable) {
+    preferences.putBool("dashbeep", enable);
+}
+
 void* backend_download_file(const char* url, size_t* out_size) {
     *out_size = 0;
     if (WiFi.status() != WL_CONNECTED) return NULL;
@@ -794,6 +835,14 @@ void backend_set_audio_volume(int volume) {
 
 int backend_get_audio_volume() {
     return audio_volume;
+}
+
+void backend_beep(int volume, int duration_ms) {
+#if CARUSOS_DASHBOARD_ALERT
+    if (speaker_released || play_audio) return;
+    beep_volume = volume < 0 ? 0 : (volume > 100 ? 100 : volume);
+    beep_ms = duration_ms;
+#endif
 }
 
 void backend_get_sys_info(uint32_t &free_heap, uint32_t &total_heap, 

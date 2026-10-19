@@ -65,6 +65,11 @@ typedef struct {
 #else
 #define BUILD_IMU NULL
 #endif
+#if CARUSOS_APP_DASHBOARD
+#define BUILD_DASHBOARD app_build_dashboard
+#else
+#define BUILD_DASHBOARD NULL
+#endif
 
 static const carusos_app_t g_apps[] = {
     { APP_CALC,     LV_SYMBOL_PLUS,      TXT_APP_CALC_TITLE,   true,                 app_build_calc },
@@ -80,6 +85,7 @@ static const carusos_app_t g_apps[] = {
     { APP_ANIM,     LV_SYMBOL_PLAY,      TXT_APP_ANIM_NAME,    ENABLE_APP_ANIM,      BUILD_ANIM },
     { APP_MIC,      LV_SYMBOL_AUDIO,     TXT_APP_MIC_NAME,     ENABLE_APP_MIC_TEST,  BUILD_MIC },
     { APP_IMU,      LV_SYMBOL_GPS,       TXT_APP_IMU_NAME,     ENABLE_APP_IMU,       BUILD_IMU },
+    { APP_DASHBOARD, LV_SYMBOL_LIST,     TXT_APP_DASHBOARD_NAME, CARUSOS_APP_DASHBOARD, BUILD_DASHBOARD },
     { APP_DEEPSLEEP, LV_SYMBOL_EJECT,    TXT_DEEP_SLEEP,       CARUSOS_USE_DEEP_SLEEP, NULL /* action: deep sleep */ },
 };
 static const int g_app_count = sizeof(g_apps) / sizeof(g_apps[0]);
@@ -379,6 +385,7 @@ static void create_main_screen() {
     lv_obj_set_style_pad_column(app_grid, 20, 0);
 
     // Populate Desktop Apps
+    ui_add_app_icon(app_grid, APP_DASHBOARD);
     ui_add_app_icon(app_grid, APP_CALC);
     ui_add_app_icon(app_grid, APP_GALLERY);
     ui_add_app_icon(app_grid, APP_ANIM);
@@ -430,4 +437,9 @@ void ui_core_init() {
 
     // 4. Start the status bar polling timer (updates every 1s)
     lv_timer_create(ui_poll_timer_cb, 1000, NULL);
+
+#if CARUSOS_DASHBOARD_ALERT
+    // 5. Pre-event beeps, independent of the Dashboard screen
+    dashboard_alerts_init();
+#endif
 }

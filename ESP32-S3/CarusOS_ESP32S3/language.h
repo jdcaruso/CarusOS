@@ -52,9 +52,18 @@
     // IMU
     #define TXT_APP_IMU_TITLE    "Movimiento (IMU)"
     #define TXT_IMU_NOT_FOUND    "IMU no detectado (QMI8658)."
+    // Dashboard
+    #define TXT_APP_DASHBOARD_NAME  "Panel"
+    #define TXT_APP_DASHBOARD_TITLE "Panel"
+    #define TXT_DASH_EMPTY       "Sin tarjetas configuradas.\n\nDefini CARUSOS_DASHBOARD_EVENTS en\ncustomizations/config_local.h\n(ejemplo en config_local.h.example)."
+    #define TXT_DASH_WAIT_TIME   "Esperando la hora (NTP/RTC)..."
+    #define TXT_DASH_BAD_PERIOD  "Periodo invalido (debe ser > 0)."
+    #define TXT_DASH_NOW         "Ahora!"
+    #define TXT_DASH_AT          "Proximo a las"
     // Options
     #define TXT_OPT_TELNET       "Telnet Logger (Puerto 23)"
     #define TXT_OPT_ANIM         "Animaciones UI"
+    #define TXT_OPT_DASH_ALERT   "Panel: aviso sonoro"
     #define TXT_OPT_BT           "Bluetooth (BLE)"
     #define TXT_OPT_WIFI_RECONNECT "Reconectar WiFi"
     // Shared
@@ -136,9 +145,18 @@
     // IMU
     #define TXT_APP_IMU_TITLE    "Motion (IMU)"
     #define TXT_IMU_NOT_FOUND    "IMU not detected (QMI8658)."
+    // Dashboard
+    #define TXT_APP_DASHBOARD_NAME  "Dashboard"
+    #define TXT_APP_DASHBOARD_TITLE "Dashboard"
+    #define TXT_DASH_EMPTY       "No cards configured.\n\nDefine CARUSOS_DASHBOARD_EVENTS in\ncustomizations/config_local.h\n(example in config_local.h.example)."
+    #define TXT_DASH_WAIT_TIME   "Waiting for time (NTP/RTC)..."
+    #define TXT_DASH_BAD_PERIOD  "Invalid period (must be > 0)."
+    #define TXT_DASH_NOW         "Now!"
+    #define TXT_DASH_AT          "Next at"
     // Options
     #define TXT_OPT_TELNET       "Telnet Logger (Port 23)"
     #define TXT_OPT_ANIM         "UI Animations"
+    #define TXT_OPT_DASH_ALERT   "Dashboard: alert beep"
     #define TXT_OPT_BT           "Bluetooth (BLE)"
     #define TXT_OPT_WIFI_RECONNECT "Reconnect WiFi"
     // Shared

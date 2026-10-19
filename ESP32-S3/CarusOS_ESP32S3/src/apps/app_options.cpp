@@ -1,4 +1,4 @@
-// Options: runtime toggles persisted in NVS (WiFi, Telnet, animations, BLE).
+// Options: runtime toggles persisted in NVS (WiFi, Telnet, animations, Dashboard beep, BLE).
 #include "apps.h"
 
 // One "label ............ [switch]" row.
@@ -43,6 +43,10 @@ void app_build_options(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * tit
 #endif
     options_add_switch(cont, TXT_OPT_ANIM, backend_get_animations(),
         [](lv_event_t * e) { backend_set_animations(switch_is_on(e)); });
+#if CARUSOS_DASHBOARD_ALERT
+    options_add_switch(cont, TXT_OPT_DASH_ALERT, backend_get_dash_alert(),
+        [](lv_event_t * e) { backend_set_dash_alert(switch_is_on(e)); });
+#endif
 #if CARUSOS_USE_BLUETOOTH
     options_add_switch(cont, TXT_OPT_BT, backend_get_bluetooth(),
         [](lv_event_t * e) { backend_set_bluetooth(switch_is_on(e)); });

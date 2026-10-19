@@ -7,6 +7,22 @@ cause, workaround, ruled-out hypothesis), it goes into the entry below.
 
 ## 🔬 Needs a hardware test
 
+- [ ] **v0.48.0 (Dashboard app).** Compile-checked only, never flashed. To check:
+  - The Dashboard icon is on the desktop; it opens and Back works.
+  - With events in `config_local.h`: one card per event, the countdown ticks
+    every second, and the "at HH:MM" time matches the real next occurrence
+    (local time). At zero it shows "Now" for a second, then the full period.
+  - Before the clock is valid (WiFi off, no RTC time) the cards say "waiting
+    for time", not garbage.
+  - With `CARUSOS_DASHBOARD_EVENTS` undefined: the explanatory empty text.
+  - **Beep:** one short soft tone `alert` seconds before each occurrence, also
+    with the Dashboard closed, and only once per occurrence. Check the volume
+    (`CARUSOS_DASHBOARD_ALERT_VOLUME` 30 is a guess: the ES8311 curve was never
+    measured), that the user's audio volume is unchanged afterwards, and that
+    the Options switch silences it and survives a reboot (NVS key `dashbeep`).
+    After the Mic Test there are no beeps until reboot (same I2S hand-off bug).
+  - Known risk: see the RTC/epoch bug below — offline (RTC only) the countdown
+    may be off by the GMT offset until NTP syncs.
 - [ ] **v0.46.0 (AXP2101 battery status).** Flashed 2026-10-19; serial log shows
   `[PMU] AXP2101 ready.` and `battery=no, usb=1` (board on USB, no battery).
   To check: the USB icon left of the WiFi icon (desktop and app title bars), the
@@ -50,6 +66,20 @@ cause, workaround, ruled-out hypothesis), it goes into the entry below.
   `backend_core.cpp`) once the File System bug below is closed.
 
 ## 🐞 Known bugs
+
+- [ ] **Before NTP, the system epoch is off by the GMT offset (RTC holds local
+  time).** Found 2026-10-19 while adding the Dashboard; code reading, not seen on
+  the board. `backend_core.cpp` writes the RTC from `getLocalTime()` (local
+  time) and at boot seeds the clock with `mktime()` *before* `configTime()` has
+  set the TZ, so `mktime` treats the local fields as UTC. Wall-clock displays
+  look right (TZ is still UTC, so `localtime` gives the fields back), but
+  `time(NULL)` is wrong by `GMT_OFFSET_SEC` until NTP syncs. Anything using
+  epoch math (the Dashboard countdowns) is off by that much offline. Also: the
+  NTP→RTC write runs as soon as `getLocalTime()` is valid after WiFi connects,
+  which with an RTC-seeded clock can be before NTP actually answered.
+  - **Fix idea (untested):** set the TZ (same string `configTime()` builds)
+    before seeding from the RTC, and only write the RTC after a real SNTP sync
+    (`sntp_get_sync_status()` or a sync callback).
 
 - [ ] **File System: mounting FFat at boot crashes the device.** `CARUSOS_USE_FS`
   and `CARUSOS_APP_EXPLORER` are 0 until this is fixed. History, oldest first:

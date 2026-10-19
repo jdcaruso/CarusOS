@@ -25,6 +25,7 @@ typedef enum {
     APP_MIC,
     APP_IMU,
     APP_DEEPSLEEP,
+    APP_DASHBOARD,
 } carusos_app_id_t;
 
 // Fills an app window. The title bar and back button already exist; `content`
@@ -78,4 +79,11 @@ void app_build_mic(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_l
 #endif
 #if ENABLE_APP_IMU
 void app_build_imu(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label);
+#endif
+#if CARUSOS_APP_DASHBOARD
+void app_build_dashboard(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * title_label);
+#endif
+#if CARUSOS_DASHBOARD_ALERT
+// Starts the 1 s timer that beeps before events (lives outside any screen).
+void dashboard_alerts_init();
 #endif

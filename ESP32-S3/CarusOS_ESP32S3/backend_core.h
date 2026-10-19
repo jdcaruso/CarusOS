@@ -19,6 +19,10 @@ bool backend_get_power(int &percent, bool &charging, bool &usb, int &batt_mv);
 void backend_set_audio_state(bool play);
 void backend_set_audio_volume(int volume);
 int backend_get_audio_volume();
+// Short soft tone at `volume` (0-100), played by the audio task, then the user
+// volume is restored. Ignored while a tone plays or after the Mic Test.
+// Only does something with CARUSOS_DASHBOARD_ALERT.
+void backend_beep(int volume, int duration_ms);
 
 // Microphone test (ES7210). Start/stop capture and read a 0-100 input level.
 void backend_mic_start();
@@ -45,6 +49,8 @@ bool backend_get_bluetooth();
 void backend_set_bluetooth(bool enable);
 bool backend_get_wifi_enabled();
 void backend_set_wifi_enabled(bool enable);
+bool backend_get_dash_alert();          // Dashboard pre-event beep (runtime, NVS)
+void backend_set_dash_alert(bool enable);
 
 // Network Utils
 void* backend_download_file(const char* url, size_t* out_size);

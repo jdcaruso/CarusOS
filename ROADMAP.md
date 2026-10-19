@@ -48,6 +48,8 @@
     1.6.6); Animation and Mic Test apps enabled.
   - v0.46.0: AXP2101 battery/USB status in the status bar and Sys Info.
   - v0.47.0: backlight moved to its real pin (GPIO4); deep sleep, woken by BOOT.
+  - v0.48.0: Dashboard app, first card type: recurring countdowns configured
+    in `config_local.h`, with an optional soft beep before each one.
   - Telnet log goes through a queue (Core 0 owns the socket); FS work moved to
     Core 0; expander mutex; framebuffer pushed only when dirty.
   - Compile-check CI with `arduino-cli`, libraries pinned.
@@ -132,5 +134,9 @@ has to re-derive them:
 - **Inactivity timeout:** Auto-dim/sleep the backlight after N seconds without touch.
 - **PWM brightness control:** the backlight is already on LEDC PWM (GPIO4,
   v0.47.0) at full duty; a brightness slider just needs a `ledcWrite` level.
+- **Dashboard: more card types.** Next one: a remote JSON card that polls a
+  URL served by a separate backend (the device holds no third-party tokens;
+  the backend does the API work and returns ready-to-show values). The card
+  code is laid out for this (`dash_card_t` with a per-type tick).
 - **Notification / toast system:** Reusable status-bar notifications any app can raise.
 - **Bluetooth:** Add BLE support for notifications from a smartphone.

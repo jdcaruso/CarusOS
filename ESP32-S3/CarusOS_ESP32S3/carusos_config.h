@@ -9,7 +9,7 @@
 // one file that needs it, so the rest of the build never sees the passwords.
 #include "customizations/config_local.h"
 
-#define CARUSOS_VERSION         "v0.47.1"
+#define CARUSOS_VERSION         "v0.48.0"
 #define CARUSOS_AUTHOR          "Javier D. Caruso"
 #define CARUSOS_SOURCE_DATE     "2026-10-19"
 #define CARUSOS_LANG_ES         1 // 1 for Spanish, 0 for English
@@ -50,6 +50,15 @@
 #define ENABLE_APP_MIC_TEST     1 // 1: ES7210 mic level meter. 0: compiled out.
 #define ENABLE_APP_ANIM         1 // 1: bouncing-sprite demo. 0: compiled out.
 #define ENABLE_APP_IMU          1 // 1: tilt demo on the QMI8658 IMU. 0: compiled out.
+#define CARUSOS_APP_DASHBOARD   1 // 1: Dashboard cards (countdowns set in config_local.h). 0: compiled out.
+#define CARUSOS_DASHBOARD_ALERT 1 // 1: soft beep before each countdown (on/off in Options). Needs AUDIO.
+// Defaults for the beep; override them in customizations/config_local.h.
+#ifndef CARUSOS_DASHBOARD_ALERT_LEAD
+#define CARUSOS_DASHBOARD_ALERT_LEAD   600 // seconds before an event (per-event 4th field overrides; 0 = none)
+#endif
+#ifndef CARUSOS_DASHBOARD_ALERT_VOLUME
+#define CARUSOS_DASHBOARD_ALERT_VOLUME 30  // 0-100, codec volume for the beep only
+#endif
 
 // ---------------------------------------------------------------------------
 // Sanity checks: fail the build on flag combinations that cannot work, instead
@@ -60,6 +69,9 @@
 #endif
 #if CARUSOS_APP_EXPLORER && !CARUSOS_USE_FS
 #error "CARUSOS_APP_EXPLORER needs CARUSOS_USE_FS=1."
+#endif
+#if CARUSOS_DASHBOARD_ALERT && !(CARUSOS_APP_DASHBOARD && CARUSOS_USE_AUDIO)
+#error "CARUSOS_DASHBOARD_ALERT needs CARUSOS_APP_DASHBOARD=1 and CARUSOS_USE_AUDIO=1."
 #endif
 #if CARUSOS_APP_GALLERY && !CARUSOS_USE_PNG
 #error "CARUSOS_APP_GALLERY needs CARUSOS_USE_PNG=1 (it shows a downloaded PNG)."

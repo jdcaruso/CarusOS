@@ -11,3 +11,19 @@
 
 // Image URL used by the Gallery app demo.
 #define CARUSOS_GALLERY_IMAGE_URL   "https://example.com/hero.png"
+
+// Dashboard app (CARUSOS_APP_DASHBOARD): recurring countdowns, up to 4.
+// Each entry is { "label", anchor, period[, alert] }:
+//   anchor = any one occurrence of the event, as unix epoch seconds in UTC
+//            (past or future; e.g. `date -d "2026-01-01 09:00 -03:00" +%s`).
+//   period = seconds between occurrences (86400 = daily, 604800 = weekly).
+//   alert  = optional: seconds before each occurrence to play a soft beep
+//            (0 = no beep). Default CARUSOS_DASHBOARD_ALERT_LEAD (600 = 10 min).
+//            The beep can also be switched off at runtime in Options.
+// The app counts down to the next occurrence and shows its local time.
+// Leave CARUSOS_DASHBOARD_EVENTS undefined for an empty dashboard.
+#define CARUSOS_DASHBOARD_EVENTS \
+    { "Standup", 1767268800, 86400, 300 }, /* daily, 2026-01-01 12:00 UTC; beep 5 min before */
+// Optional beep tuning (defaults in carusos_config.h):
+// #define CARUSOS_DASHBOARD_ALERT_LEAD   600 // default lead for events without a 4th field
+// #define CARUSOS_DASHBOARD_ALERT_VOLUME 30  // 0-100, beep only
