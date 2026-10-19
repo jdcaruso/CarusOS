@@ -359,6 +359,22 @@ static void Task_Backend(void *pvParameters) {
                   (int)runtime_wifi_enabled, (int)runtime_use_telnet,
                   (int)runtime_use_animations, (int)runtime_use_bluetooth);
 
+#if CARUSOS_USE_RTC
+    // Seed the system clock from the battery-backed RTC so the time is right
+    // immediately, even before (or without) a WiFi/NTP sync. Done before
+    // WiFi.begin(): probing the RTC while WiFi was starting up on this core
+    // failed on some boots with the I2C bus returning garbage.
+    if (rtc_begin()) {
+        struct tm rtm;
+        if (rtc_get(rtm) && rtm.tm_year > 120) { // valid (year > 2020)
+            time_t t = mktime(&rtm);
+            struct timeval tv = { .tv_sec = t, .tv_usec = 0 };
+            settimeofday(&tv, NULL);
+            Serial.println("[RTC] System time seeded from RTC.");
+        }
+    }
+#endif
+
     if (runtime_wifi_enabled) {
         Serial.println("[Backend] Starting WiFi Connection...");
         WiFi.mode(WIFI_STA);
@@ -386,20 +402,6 @@ static void Task_Backend(void *pvParameters) {
             Serial.println("[Backend] FFat Mounted.");
         } else {
             Serial.println("[Backend] FFat not mounted (unformatted?). Use an explicit format action.");
-        }
-    }
-#endif
-
-#if CARUSOS_USE_RTC
-    // Seed the system clock from the battery-backed RTC so the time is right
-    // immediately, even before (or without) a WiFi/NTP sync.
-    if (rtc_begin()) {
-        struct tm rtm;
-        if (rtc_get(rtm) && rtm.tm_year > 120) { // valid (year > 2020)
-            time_t t = mktime(&rtm);
-            struct timeval tv = { .tv_sec = t, .tv_usec = 0 };
-            settimeofday(&tv, NULL);
-            Serial.println("[RTC] System time seeded from RTC.");
         }
     }
 #endif
@@ -462,9 +464,8 @@ static void Task_Backend(void *pvParameters) {
             if (!rtc_synced_from_ntp) {
                 struct tm nt;
                 if (getLocalTime(&nt, 5) && nt.tm_year > 120) {
-                    rtc_set(nt);
-                    rtc_synced_from_ntp = true;
-                    Serial.println("[RTC] Updated from NTP.");
+                    if (rtc_set(nt)) Serial.println("[RTC] Updated from NTP.");
+                    rtc_synced_from_ntp = true; // don't retry every loop without an RTC
                 }
             }
         } else {

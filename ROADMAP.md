@@ -40,10 +40,12 @@
   - Animation app (`ENABLE_APP_ANIM`): code-driven LVGL sprite demo.
   - Mic Test app (`ENABLE_APP_MIC_TEST`): ES7210 capture + live level meter.
 
-- **Phase 12: Onboard hardware & hardening** *(v0.37.0 – v0.44.1)*
+- **Phase 12: Onboard hardware & hardening** *(v0.37.0 – v0.45.0)*
   - Motion app (QMI8658 IMU), Date & Time app with the PCF85063 RTC (clock
     survives reboots without WiFi).
   - WiFi on/off persisted in NVS; tabbed Sys Info with the chip list.
+  - v0.45.0: libraries updated (LVGL 9.5.0, SensorLib 0.4.1, Arduino_GFX
+    1.6.6); Animation and Mic Test apps enabled.
   - Telnet log goes through a queue (Core 0 owns the socket); FS work moved to
     Core 0; expander mutex; framebuffer pushed only when dirty.
   - Compile-check CI with `arduino-cli`, libraries pinned.

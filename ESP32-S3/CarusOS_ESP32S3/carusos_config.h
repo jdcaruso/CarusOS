@@ -9,7 +9,7 @@
 // one file that needs it, so the rest of the build never sees the passwords.
 #include "customizations/config_local.h"
 
-#define CARUSOS_VERSION         "v0.44.1"
+#define CARUSOS_VERSION         "v0.45.0"
 #define CARUSOS_AUTHOR          "Javier D. Caruso"
 #define CARUSOS_SOURCE_DATE     "2026-10-19"
 #define CARUSOS_LANG_ES         1 // 1 for Spanish, 0 for English
@@ -45,8 +45,8 @@
 #define CARUSOS_APP_EXPLORER    0 // 1: File Explorer (FS ops run on Core 0). Needs CARUSOS_USE_FS.
 #define CARUSOS_APP_GALLERY     1 // 0: Disable Web Gallery, 1: Enable Web Gallery. Needs CARUSOS_USE_PNG.
 #define CARUSOS_USE_PNG         1 // 0: Disable PNG decoding (saves RAM/Flash), 1: Enable PNG decoding
-#define ENABLE_APP_MIC_TEST     0 // 1: ES7210 mic level meter. 0: compiled out.
-#define ENABLE_APP_ANIM         0 // 1: bouncing-sprite demo. 0: compiled out.
+#define ENABLE_APP_MIC_TEST     1 // 1: ES7210 mic level meter. 0: compiled out.
+#define ENABLE_APP_ANIM         1 // 1: bouncing-sprite demo. 0: compiled out.
 #define ENABLE_APP_IMU          1 // 1: tilt demo on the QMI8658 IMU. 0: compiled out.
 
 // ---------------------------------------------------------------------------

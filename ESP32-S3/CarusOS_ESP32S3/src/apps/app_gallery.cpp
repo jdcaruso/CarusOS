@@ -1,6 +1,10 @@
 // Web Gallery: downloads one PNG (CARUSOS_GALLERY_IMAGE_URL) and shows it.
 #include "apps.h"
 
+// Public LVGL API, but since 9.5 lvgl.h only exposes its header with
+// LV_USE_PRIVATE_API. Declare it here instead of reaching into lvgl/src.
+extern "C" void lv_image_cache_drop(const void * src);
+
 #if CARUSOS_APP_GALLERY
 // Per-instance state. Plain malloc (NOT lv_malloc / ui_screen_alloc): if the
 // user leaves mid-download, ownership moves to the Core 0 download task, which

@@ -7,7 +7,17 @@ cause, workaround, ruled-out hypothesis), it goes into the entry below.
 
 ## 🔬 Needs a hardware test
 
-- [ ] **v0.44.1 (code-review cleanup).** Compiles clean; not flashed yet. What to
+- [ ] **v0.45.0 (library update + more apps).** Flashed 2026-10-19 by cable; boot,
+  WiFi, NTP and the RTC checked on the serial log only (nobody looked at the
+  screen). Built with LVGL 9.5.0, SensorLib 0.4.1, Arduino_GFX 1.6.6 (stock, the
+  hand-patched 1.6.0 is gone). What to check on the device:
+  - Display and touch behave as before (GFX and SensorLib's GT911 driver changed).
+  - **Animation** app (new on the desktop) and **Mic Test** (Settings grid) open
+    and Back works.
+  - Gallery still shows the PNG (LVGL 9.5; `lv_image_cache_drop` is now declared
+    by hand in `app_gallery.cpp`, see the comment there).
+  - Known: after Mic Test the speaker stays dead until reboot (bug below).
+- [ ] **v0.44.1 (code-review cleanup).** Flashed and boots; the UI checks were never done (they still apply to v0.45.0). What to
   check on the device:
   - Every app opens and **Back** works, with UI animations both on and off.
   - **Gallery:** leave while the image is still downloading, and again after it
@@ -26,12 +36,11 @@ cause, workaround, ruled-out hypothesis), it goes into the entry below.
   the Arduino IDE's `Sketch uses N bytes`. This captures the heavy ones that have no
   in-sketch file (WiFi, OTA, FFat, BLE ≈ 1 MB). *Deferred 2026-06-27.*
   Baseline for v0.44.0 with the default flags: 1,684,455 bytes (53% of 3 MB).
-- [ ] **Upgrade the local Arduino_GFX from patched 1.6.0 to 1.6.6.** The
-  hardware builds use a 1.6.0 copy (from Waveshare's demo zip) with
-  `src/databus/Arduino_ESP32SPI.cpp` and `Arduino_ESP32SPIDMA.cpp` patched by hand
-  (2026-06-26) for the core-3.3 `spiFrequencyToClockDiv(spi, freq)` signature.
-  CI uses stock 1.6.6, which has the same fix upstream. Upgrade with the Library
-  Manager, rebuild and flash-test, so the local and CI builds match.
+- [ ] **Clear the deprecation warnings from the new libraries.** SensorLib 0.4.1:
+  `TouchDrvGT911.hpp` is deprecated (include `TouchDrv.hpp`) and `getPoint()` →
+  `getTouchPoints()` (`lvgl_port.cpp`). Core 3.3: `NetworkServer::available()` →
+  `accept()` (Telnet, `backend_core.cpp`). They compile today; they'll break on a
+  future major.
 - [ ] **Remove the FS debug instrumentation** (`[FS] …` prints in `fs_do_list()`,
   `backend_core.cpp`) once the File System bug below is closed.
 
@@ -70,16 +79,21 @@ cause, workaround, ruled-out hypothesis), it goes into the entry below.
     runs may glitch the display. The real fix is a custom sdkconfig, which needs
     PlatformIO (see ROADMAP).
 
-- [ ] **RTC (PCF85063) not detected at boot.** Seen on v0.44.1 (2026-10-19):
-  `[RTC] PCF85063 not found!`, then the clock still works from NTP. The RTC
-  code was not touched in that release, so it's either older or hardware (board
-  revision without the chip, I2C address, bus not ready that early). Also, the
-  log still prints `[RTC] Updated from NTP.` even though `rtc_set()` was a no-op;
-  make that log depend on `rtc_ready`. Next step: I2C scan on the shared bus.
+- [x] **RTC (PCF85063) not detected at boot — fixed in v0.45.0, keep an eye on it.**
+  Seen on v0.44.1: `[RTC] PCF85063 not found!`, clock only from NTP. The chip is
+  there (0x51 ACKs). On v0.45.0 before the fix it failed on 1 boot out of 3, and on
+  that boot an I2C scan "found" ~60 devices: the bus was returning garbage. The
+  failing probe ran on Core 0 right after `WiFi.begin()`. Wire already serializes
+  transactions between cores, so it is not a plain software race. Fix: probe the
+  RTC **before** starting WiFi, retry 3× 100 ms apart, and stop passing the pins
+  to SensorLib (it re-ran `setPins()`/`begin()` on the already started bus). 6/6
+  boots OK after that. `rtc_set()` now returns bool, so `[RTC] Updated from NTP.`
+  only prints when it was written. If it ever fails again the log prints a probe
+  of 0x51 and a bus scan.
 
 - [ ] **Speaker is dead after using the Mic Test app until reboot.** The mic and
   the speaker share the I2S clock pins; `backend_mic_start()` calls `i2s.end()`
   on the speaker and nothing calls `begin()` again. Also, that `i2s.end()` runs on
   the UI core while `Task_Audio` (Core 0) may be inside `i2s.write()`. Fix: let
-  `Task_Audio` own the hand-off (a flag it checks to end/re-init its I2S). Low
-  priority while `ENABLE_APP_MIC_TEST` is 0.
+  `Task_Audio` own the hand-off (a flag it checks to end/re-init its I2S). **Live
+  since v0.45.0**: Mic Test is now enabled, so this one is next in line.

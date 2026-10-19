@@ -9,5 +9,5 @@
 #if CARUSOS_USE_RTC
 bool rtc_begin();                 // init the RTC; true if found
 bool rtc_get(struct tm &out);     // read RTC into a struct tm
-void rtc_set(const struct tm &t); // write a struct tm into the RTC
+bool rtc_set(const struct tm &t); // write a struct tm into the RTC; false if no RTC
 #endif

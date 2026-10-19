@@ -89,7 +89,7 @@ void app_build_sysinfo(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * tit
 #endif
         "PMU: AXP2101",
         ESP.getChipModel(), ESP.getChipRevision(),
-        ESP.getChipCores(), ESP.getCpuFreqMHz(),
+        ESP.getChipCores(), (int)ESP.getCpuFreqMHz(),
         (int)(ESP.getFlashChipSize() / (1024 * 1024)),
         (int)(ESP.getPsramSize() / (1024 * 1024)));
 }

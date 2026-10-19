@@ -134,11 +134,14 @@ Critical Arduino IDE settings (see README for the full list): Board
 PSRAM `OPI PSRAM`, Flash Mode `QIO 80MHz`. Wrong settings cause bootloops or a
 very slow UI.
 
-Dependencies (pinned in CI): ESP32 Arduino core 3.3.10, LVGL 9.3.0, GFX Library
-for Arduino 1.6.6, SensorLib 0.3.1. ESP_I2S ships with the core. GFX must be
+Dependencies (pinned in CI): ESP32 Arduino core 3.3.10, LVGL 9.5.0, GFX Library
+for Arduino 1.6.6, SensorLib 0.4.1. ESP_I2S ships with the core. GFX must be
 >= 1.6.5: older releases call the pre-3.3 `spiFrequencyToClockDiv()` signature and
-fail to compile on core 3.3.x. (The owner's machine still runs a hand-patched
-1.6.0 with that same fix; see `pendings.md`.)
+fail to compile on core 3.3.x.
+
+LVGL reads `lv_conf.h` from the Arduino `libraries/` folder, **not** from the
+sketch. After editing the sketch's `lv_conf.h`, copy it there (CI does the same
+copy); a stale copy silently builds with different settings.
 
 A local compile check with `arduino-cli` (the same FQBN as CI) catches build
 breaks, but only the hardware tells you whether it works. Land changes in small

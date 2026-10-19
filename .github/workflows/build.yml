@@ -48,9 +48,9 @@ jobs:
         # upgrading. GFX must be >= 1.6.5: older releases call the pre-3.3
         # spiFrequencyToClockDiv() signature and don't compile on core 3.3.x.
         run: |
-          arduino-cli lib install "lvgl@9.3.0"
+          arduino-cli lib install "lvgl@9.5.0"
           arduino-cli lib install "GFX Library for Arduino@1.6.6"
-          arduino-cli lib install "SensorLib@0.3.1"
+          arduino-cli lib install "SensorLib@0.4.1"
           # ESP_I2S ships with the ESP32 core (no separate install needed).
 
       - name: Provide lv_conf.h to LVGL

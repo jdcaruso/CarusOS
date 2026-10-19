@@ -1,6 +1,6 @@
 # CarusOS 📱
 
-![Version](https://img.shields.io/badge/version-v0.44.1-blue)
+![Version](https://img.shields.io/badge/version-v0.45.0-blue)
 ![Platform](https://img.shields.io/badge/platform-ESP32--S3-green)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
@@ -73,9 +73,9 @@ listed are the ones tested on hardware and pinned in CI; newer ones may work but
 aren't verified.
 
 - **ESP32 Arduino core** 3.3.10
-- **LVGL** 9.3.0 — UI engine
+- **LVGL** 9.5.0 — UI engine
 - **GFX Library for Arduino** (`Arduino_GFX`) **1.6.5 or newer** (CI uses 1.6.6) — RGB panel + ST7701 driver. Older releases don't compile on ESP32 core 3.3.x.
-- **SensorLib** 0.3.1 — GT911 touch, QMI8658 IMU and PCF85063 RTC drivers
+- **SensorLib** 0.4.1 — GT911 touch, QMI8658 IMU and PCF85063 RTC drivers
 - **ESP_I2S** — audio (bundled with the ESP32 Arduino core v3.x)
 
 The ESP32 Arduino core ships the rest (`WiFi`, `Preferences`, `ArduinoOTA`, `HTTPClient`, `FFat`, `Wire`).
