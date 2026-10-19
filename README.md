@@ -135,3 +135,7 @@ add the CI step to generate the dummy version.
 ## 📄 License
 
 Released under the [MIT License](LICENSE).
+
+---
+
+Built by Javier Caruso → [javiercaruso.com](https://javiercaruso.com)

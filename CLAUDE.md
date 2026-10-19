@@ -80,6 +80,45 @@ very slow UI.
 
 Dependencies: LVGL 9.x, Arduino_GFX, SensorLib (GT911), ESP_I2S.
 
+## How this "deploys" (o sea: cómo llega a algún lado)
+
+CarusOS **no tiene sitio web ni pipeline de release**. Escrito acá porque la pregunta
+«¿cómo deploya esto?» no se contesta sola y la respuesta correcta es «de tres maneras
+distintas, ninguna automática»:
+
+1. **A la gente → el repo público mismo.** `github.com/jdcaruso/CarusOS` es la única
+   vitrina: el `README.md` **es** la landing del proyecto (badges, features, settings
+   de compilación). No hay dominio, no hay GitHub Pages, y `homepageUrl` del repo está
+   vacío. Cambiar el README **es** publicar.
+2. **Al hardware, por cable →** Arduino IDE sobre `ESP32-S3/CarusOS_ESP32S3/`, con los
+   settings críticos del README (16MB / `16M Flash (3MB APP / 9.9MB FATFS)` / OPI PSRAM
+   / QIO 80MHz). Paso manual, siempre.
+3. **Al hardware, por aire →** OTA, si `CARUSOS_USE_OTA` está prendido; la password sale
+   de `customizations/secrets.h` (gitignored). También manual.
+
+**No hay releases publicadas ni binarios adjuntos** (`gh release list` está vacío) — quien
+quiera CarusOS lo compila. Si algún día se publican binarios, esa decisión se escribe acá.
+
+### CI: sí hay, y es barato — no tocarlo
+
+[`.github/workflows/build.yml`](.github/workflows/build.yml) hace un **compile-check con
+`arduino-cli`**: genera `secrets.h`/`config_local.h` dummy desde los `*.example` y compila
+de verdad. **No flashea nada y no publica nada** — es un gate de "no rompiste el build",
+no un deploy.
+
+- Corre en `ubuntu-latest` (~4 min), sólo en push a `main`/`dev` **y sólo si tocaste
+  `ESP32-S3/**` o el propio workflow**. Editar README/docs no dispara nada.
+- **La flag de Actions está PRENDIDA en este repo, a propósito** — a diferencia de
+  `wine-and-sorcery`, donde está apagada. Linux es 1x y el gasto es marginal. Antes de
+  agregar, ampliar o "mejorar" cualquier workflow acá, leé la sección «GitHub Actions» de
+  `~/Code/adm/CLAUDE.md`: hay un costo medido detrás de esa regla (un runner de macOS/Windows
+  se comió la cuota del mes en dos días).
+
+### Ramas
+
+`main` y `dev`, las dos con CI. `main` es la default y es la que ve cualquiera que entre al
+repo — o sea, lo que toque el README sólo cuenta cuando está en `main`.
+
 ## Conventions
 
 - Feature flags live in `carusos_config.h`; gate optional code with `#if CARUSOS_USE_*`.
