@@ -26,6 +26,12 @@ cause, workaround, ruled-out hypothesis), it goes into the entry below.
   the Arduino IDE's `Sketch uses N bytes`. This captures the heavy ones that have no
   in-sketch file (WiFi, OTA, FFat, BLE ≈ 1 MB). *Deferred 2026-06-27.*
   Baseline for v0.44.0 with the default flags: 1,684,455 bytes (53% of 3 MB).
+- [ ] **Upgrade the local Arduino_GFX from patched 1.6.0 to 1.6.6.** The
+  hardware builds use a 1.6.0 copy (from Waveshare's demo zip) with
+  `src/databus/Arduino_ESP32SPI.cpp` and `Arduino_ESP32SPIDMA.cpp` patched by hand
+  (2026-06-26) for the core-3.3 `spiFrequencyToClockDiv(spi, freq)` signature.
+  CI uses stock 1.6.6, which has the same fix upstream. Upgrade with the Library
+  Manager, rebuild and flash-test, so the local and CI builds match.
 - [ ] **Remove the FS debug instrumentation** (`[FS] …` prints in `fs_do_list()`,
   `backend_core.cpp`) once the File System bug below is closed.
 
