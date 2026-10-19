@@ -122,6 +122,19 @@ after enabling `CARUSOS_USE_FS`), go step by step:
    upload again. This also wipes the saved settings (WiFi on/off, Telnet,
    animations), which go back to their defaults.
 
+**Prefer a GUI?** Espressif's **Flash Download Tool** (Windows,
+[download](https://dl.espressif.com/public/flash_download_tool.zip)) does the same
+thing. This is the path Waveshare's wiki points to:
+
+- Start it and choose **ChipType `ESP32-S3`**, **WorkMode `Develop`**,
+  **LoadMode `UART`**.
+- **Factory reset:** load the factory image from Waveshare's
+  `ESP32-S3-Touch-LCD-4B-Demos.zip` (`FirmWare/*.bin`, a full 16 MB image) at
+  address **`0x0`**, tick it, pick your COM port, then press **START**. That
+  overwrites the whole flash, FAT region included. Then upload CarusOS again from
+  the Arduino IDE.
+- **Erase only:** the **ERASE** button wipes the whole flash (same as `erase-flash`).
+
 ## 📁 Project Structure
 
 All of it lives in the sketch folder `ESP32-S3/CarusOS_ESP32S3/`:
