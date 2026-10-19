@@ -95,6 +95,33 @@ Before compiling:
 Everything in `customizations/` except the `*.example` templates is gitignored,
 so your credentials and personal settings never leave your machine.
 
+## 🛟 Recovery (boot loop / "bricked" board)
+
+An ESP32-S3 can't really be bricked by a bad sketch: the ROM bootloader always
+survives, so you can flash it again. If the board resets in a loop (for example
+after enabling `CARUSOS_USE_FS`), go step by step:
+
+1. **Flash a working build.** Set the offending flag back to 0 and upload as
+   usual from the Arduino IDE. If the upload can't connect because the board
+   keeps rebooting, put it in **download mode**: hold **BOOT**, tap **RESET**,
+   release **BOOT**, then upload again. Press **RESET** afterwards to boot normally.
+2. **Still looping? Wipe the FAT partition.** Leftover data from earlier flashes
+   in the file-system region can crash the FFat mount at boot. Erase just that
+   region (app and saved settings stay untouched) with **esptool**, the flashing
+   tool that ships with the ESP32 Arduino core. On Windows it lives in
+   `%LOCALAPPDATA%\Arduino15\packages\esp32\tools\esptool_py\<version>\esptool.exe`:
+
+   ```bash
+   esptool --port COM3 erase-region 0x610000 0x9E0000
+   ```
+
+   Replace `COM3` with your port (Arduino IDE → Tools → Port). The offsets are the
+   `ffat` partition of the `16M Flash (3MB APP / 9.9MB FATFS)` scheme. esptool
+   versions before 5 spell it `erase_region`.
+3. **Last resort: erase everything** with `esptool --port COM3 erase-flash` and
+   upload again. This also wipes the saved settings (WiFi on/off, Telnet,
+   animations), which go back to their defaults.
+
 ## 📁 Project Structure
 
 All of it lives in the sketch folder `ESP32-S3/CarusOS_ESP32S3/`:

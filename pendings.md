@@ -39,9 +39,9 @@ cause, workaround, ruled-out hypothesis), it goes into the entry below.
      partition *was* found (`ffat` label is correct for `app3M_fat9M_16MB`).
      Cause: leftover data from earlier flashes in the FAT region made the
      wear-levelling layer (`wl_mount`) read a bogus config and abort instead of
-     failing cleanly. One-time fix applied on the device:
-     `esptool erase_region 0x610000 0x9E0000`. After that v0.43.0 booted with the
-     FS working.
+     failing cleanly. One-time fix applied on the device: erase the FAT region
+     with esptool (exact command, tool location and download-mode steps:
+     README → *Recovery*). After that v0.43.0 booted with the FS working.
   2. *2026-07-13 (v0.44.0):* it broke again in a different way. On the **blank**
      (all `0xFF`) partition left by the erase, `find_volume()` trips the
      **interrupt watchdog on Core 0**: wear-levelling calls
