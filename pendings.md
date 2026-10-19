@@ -64,6 +64,13 @@ cause, workaround, ruled-out hypothesis), it goes into the entry below.
     runs may glitch the display. The real fix is a custom sdkconfig, which needs
     PlatformIO (see ROADMAP).
 
+- [ ] **RTC (PCF85063) not detected at boot.** Seen on v0.44.1 (2026-10-19):
+  `[RTC] PCF85063 not found!`, then the clock still works from NTP. The RTC
+  code was not touched in that release, so it's either older or hardware (board
+  revision without the chip, I2C address, bus not ready that early). Also, the
+  log still prints `[RTC] Updated from NTP.` even though `rtc_set()` was a no-op;
+  make that log depend on `rtc_ready`. Next step: I2C scan on the shared bus.
+
 - [ ] **Speaker is dead after using the Mic Test app until reboot.** The mic and
   the speaker share the I2S clock pins; `backend_mic_start()` calls `i2s.end()`
   on the speaker and nothing calls `begin()` again. Also, that `i2s.end()` runs on
