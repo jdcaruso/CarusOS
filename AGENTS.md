@@ -142,6 +142,12 @@ A local compile check with `arduino-cli` (the same FQBN as CI) catches build
 breaks, but only the hardware tells you whether it works. Land changes in small
 steps the owner can flash-test one at a time.
 
+**Before a risky flash** (enabling the File System, erasing regions, OTA
+experiments), make sure there is a full flash backup of the working board, and
+know how to restore it: README → *Backup & Recovery*. Never erase flash without
+asking the owner first. Backups contain the WiFi credentials: they live on the
+owner's machine, never in the repo.
+
 ## How this "deploys"
 
 CarusOS has **no website and no release pipeline**. It reaches people and

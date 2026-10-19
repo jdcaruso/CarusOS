@@ -95,45 +95,72 @@ Before compiling:
 Everything in `customizations/` except the `*.example` templates is gitignored,
 so your credentials and personal settings never leave your machine.
 
-## 🛟 Recovery (boot loop / "bricked" board)
+## 🛟 Backup & Recovery (boot loop / "bricked" board)
 
 An ESP32-S3 can't really be bricked by a bad sketch: the ROM bootloader always
-survives, so you can flash it again. If the board resets in a loop (for example
-after enabling `CARUSOS_USE_FS`), go step by step:
+survives, so you can always flash it again. This section is everything needed
+to get a board back: what to download, what to run, in what order.
+
+### What you need
+
+| Tool | What for | Where to get it |
+|---|---|---|
+| **esptool** (CLI) | Back up, erase and write the flash | Ships with the ESP32 Arduino core. Windows: `%LOCALAPPDATA%\Arduino15\packages\esp32\tools\esptool_py\<version>\esptool.exe` |
+| **Flash Download Tool** (Windows GUI, optional) | Same as esptool, with buttons | [Espressif download](https://dl.espressif.com/public/flash_download_tool.zip) (portable, just unzip) |
+| **Waveshare factory firmware** (optional) | Put the board back as it shipped | `FirmWare/*.bin` (full 16 MB image) inside [ESP32-S3-Touch-LCD-4B-Demos.zip](https://files.waveshare.com/wiki/ESP32-S3-Touch-LCD-4B/ESP32-S3-Touch-LCD-4B-Demos.zip) |
+
+Commands below use `COM3`; use your port (Arduino IDE → Tools → Port). They use
+esptool 5 syntax; older versions spell it `read_flash` / `write_flash` /
+`erase_region` / `erase_flash`.
+
+### 1. Before experimenting: back up the working flash
+
+Before anything risky (enabling the File System, OTA tests, big refactors), take
+a full copy of the board while it works. It takes ~4 minutes and only reads:
+
+```bash
+esptool --port COM3 --baud 921600 read-flash 0 0x1000000 fulldump.bin
+```
+
+> ⚠️ The dump (and any compiled `.bin`) contains **your WiFi SSID and password**,
+> because `secrets.h` is compiled in. Keep it on your machine, never in the repo
+> (`*.bin` is gitignored) or anywhere public.
+
+### 2. If the board boot-loops, go step by step
 
 1. **Flash a working build.** Set the offending flag back to 0 and upload as
    usual from the Arduino IDE. If the upload can't connect because the board
    keeps rebooting, put it in **download mode**: hold **BOOT**, tap **RESET**,
    release **BOOT**, then upload again. Press **RESET** afterwards to boot normally.
-2. **Still looping? Wipe the FAT partition.** Leftover data from earlier flashes
-   in the file-system region can crash the FFat mount at boot. Erase just that
-   region (app and saved settings stay untouched) with **esptool**, the flashing
-   tool that ships with the ESP32 Arduino core. On Windows it lives in
-   `%LOCALAPPDATA%\Arduino15\packages\esp32\tools\esptool_py\<version>\esptool.exe`:
+2. **Still looping? Wipe only the FAT partition.** Leftover data from earlier
+   flashes in the file-system region can crash the FFat mount at boot. This keeps
+   the app and saved settings:
 
    ```bash
    esptool --port COM3 erase-region 0x610000 0x9E0000
    ```
 
-   Replace `COM3` with your port (Arduino IDE → Tools → Port). The offsets are the
-   `ffat` partition of the `16M Flash (3MB APP / 9.9MB FATFS)` scheme. esptool
-   versions before 5 spell it `erase_region`.
-3. **Last resort: erase everything** with `esptool --port COM3 erase-flash` and
-   upload again. This also wipes the saved settings (WiFi on/off, Telnet,
-   animations), which go back to their defaults.
+   (Offsets of the `ffat` partition in the `16M Flash (3MB APP / 9.9MB FATFS)` scheme.)
+3. **Restore your backup** (exact state from step 1, settings included):
 
-**Prefer a GUI?** Espressif's **Flash Download Tool** (Windows,
-[download](https://dl.espressif.com/public/flash_download_tool.zip)) does the same
-thing. This is the path Waveshare's wiki points to:
+   ```bash
+   esptool --port COM3 --baud 921600 write-flash 0x0 fulldump.bin
+   ```
+
+4. **No backup? Factory reset or erase everything.** Write the Waveshare factory
+   image at `0x0` the same way, or wipe it all with
+   `esptool --port COM3 erase-flash`, then upload CarusOS again. Saved settings
+   (WiFi on/off, Telnet, animations) go back to their defaults.
+
+### Same thing with the GUI (Flash Download Tool)
 
 - Start it and choose **ChipType `ESP32-S3`**, **WorkMode `Develop`**,
   **LoadMode `UART`**.
-- **Factory reset:** load the factory image from Waveshare's
-  `ESP32-S3-Touch-LCD-4B-Demos.zip` (`FirmWare/*.bin`, a full 16 MB image) at
-  address **`0x0`**, tick it, pick your COM port, then press **START**. That
-  overwrites the whole flash, FAT region included. Then upload CarusOS again from
-  the Arduino IDE.
-- **Erase only:** the **ERASE** button wipes the whole flash (same as `erase-flash`).
+- **Restore / factory reset:** first row → your `fulldump.bin` (or the factory
+  `.bin`) at address **`0x0`**, ticked; pick the COM port and BAUD 921600, then
+  **START**. Wait for **FINISH**, then press **RESET** on the board.
+- **Erase:** the **ERASE** button wipes the whole flash (same as `erase-flash`).
+- It can't make the backup in step 1 for you; use esptool for that.
 
 ## 📁 Project Structure
 
