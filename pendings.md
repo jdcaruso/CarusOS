@@ -7,6 +7,16 @@ cause, workaround, ruled-out hypothesis), it goes into the entry below.
 
 ## 🔬 Needs a hardware test
 
+- [ ] **v0.47.0 (backlight on GPIO4 + deep sleep).** Flashed 2026-10-19; boots,
+  touch controller found, serial log OK. Only visible on the screen:
+  - The screen lights up at boot (backlight now on GPIO4 PWM, active high).
+  - **Sleep** (Settings) turns the screen **off**, and a touch turns it back on.
+    Before this release Sleep pulsed the touch reset (expander pin 5) instead.
+  - **Deep sleep** (Settings, eject icon): "press BOOT" message, screen goes
+    dark after 2 s, and stays dark (GPIO4 is held low). Pressing **BOOT** reboots
+    it; the serial log shows `[Power] Woke from deep sleep (BOOT button).`
+  - If the screen stays black at boot: the backlight polarity guess is wrong
+    (`ledcWrite(PIN_LCD_BL, 255)` in `lvgl_port_init()`).
 - [ ] **v0.46.0 (AXP2101 battery status).** Flashed 2026-10-19; serial log shows
   `[PMU] AXP2101 ready.` and `battery=no, usb=1` (board on USB, no battery).
   To check: the USB icon left of the WiFi icon (desktop and app title bars), the

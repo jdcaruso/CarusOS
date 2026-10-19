@@ -40,13 +40,14 @@
   - Animation app (`ENABLE_APP_ANIM`): code-driven LVGL sprite demo.
   - Mic Test app (`ENABLE_APP_MIC_TEST`): ES7210 capture + live level meter.
 
-- **Phase 12: Onboard hardware & hardening** *(v0.37.0 – v0.46.0)*
+- **Phase 12: Onboard hardware & hardening** *(v0.37.0 – v0.47.0)*
   - Motion app (QMI8658 IMU), Date & Time app with the PCF85063 RTC (clock
     survives reboots without WiFi).
   - WiFi on/off persisted in NVS; tabbed Sys Info with the chip list.
   - v0.45.0: libraries updated (LVGL 9.5.0, SensorLib 0.4.1, Arduino_GFX
     1.6.6); Animation and Mic Test apps enabled.
   - v0.46.0: AXP2101 battery/USB status in the status bar and Sys Info.
+  - v0.47.0: backlight moved to its real pin (GPIO4); deep sleep, woken by BOOT.
   - Telnet log goes through a queue (Core 0 owns the socket); FS work moved to
     Core 0; expander mutex; framebuffer pushed only when dirty.
   - Compile-check CI with `arduino-cli`, libraries pinned.
@@ -124,8 +125,12 @@ has to re-derive them:
   demand) but is off until the FS boot bug is fixed. Next: browse folders, open
   files.
 - **Audio MP3 Player:** Extend the I2S driver to read `.mp3` or `.wav` files from the File System instead of generating a sine wave.
-- **Deep Sleep:** True battery-saving deep sleep mode with wake-on-touch capabilities.
+- **Deep Sleep:** *done in v0.47.0*, woken by the BOOT button. Wake-on-touch is
+  not possible on this board (the touch INT only reaches the I/O expander, whose
+  INT is not wired to the ESP32). A full power-off through the AXP2101 (PWR key
+  turns it back on) is the other option, not done.
 - **Inactivity timeout:** Auto-dim/sleep the backlight after N seconds without touch.
-- **PWM brightness control:** Replace the binary backlight on/off with PWM dimming.
+- **PWM brightness control:** the backlight is already on LEDC PWM (GPIO4,
+  v0.47.0) at full duty; a brightness slider just needs a `ledcWrite` level.
 - **Notification / toast system:** Reusable status-bar notifications any app can raise.
 - **Bluetooth:** Add BLE support for notifications from a smartphone.

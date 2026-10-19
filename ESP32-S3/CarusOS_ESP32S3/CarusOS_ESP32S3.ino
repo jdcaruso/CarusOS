@@ -27,6 +27,11 @@ void setup() {
   Serial.begin(115200);
   delay(1500); // Esperar a que el USB CDC se estabilice para evitar simbolos basura
   Serial.printf("\n\nBooting CarusOS %s...\n", CARUSOS_VERSION);
+#if CARUSOS_USE_DEEP_SLEEP
+  if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_EXT0) {
+    Serial.println("[Power] Woke from deep sleep (BOOT button).");
+  }
+#endif
 
   // Initialize hardware and LVGL
   lvgl_port_init();

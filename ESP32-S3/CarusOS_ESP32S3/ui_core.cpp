@@ -80,6 +80,7 @@ static const carusos_app_t g_apps[] = {
     { APP_ANIM,     LV_SYMBOL_PLAY,      TXT_APP_ANIM_NAME,    ENABLE_APP_ANIM,      BUILD_ANIM },
     { APP_MIC,      LV_SYMBOL_AUDIO,     TXT_APP_MIC_NAME,     ENABLE_APP_MIC_TEST,  BUILD_MIC },
     { APP_IMU,      LV_SYMBOL_GPS,       TXT_APP_IMU_NAME,     ENABLE_APP_IMU,       BUILD_IMU },
+    { APP_DEEPSLEEP, LV_SYMBOL_EJECT,    TXT_DEEP_SLEEP,       CARUSOS_USE_DEEP_SLEEP, NULL /* action: deep sleep */ },
 };
 static const int g_app_count = sizeof(g_apps) / sizeof(g_apps[0]);
 
@@ -254,6 +255,34 @@ static void create_app_window(const carusos_app_t * app, lv_obj_t * return_scree
     lv_scr_load_anim(app_screen, anim, 200, 0, false);
 }
 
+#if CARUSOS_USE_DEEP_SLEEP
+// Deep sleep: the only wake source on this board is the BOOT button (GPIO0,
+// active low, external pull-up): no interrupt line from the touch, PMU, RTC
+// or IMU reaches the ESP32. Waking is a full reboot.
+static void deep_sleep_timer_cb(lv_timer_t * t) {
+    Serial.println("[Power] Entering deep sleep (BOOT wakes).");
+    Serial.flush();
+    lvgl_port_prepare_deep_sleep();
+    esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, 0);
+    esp_deep_sleep_start();
+}
+
+static void deep_sleep_start_ui() {
+    // Tell the user how to wake it, then sleep 2 s later.
+    lv_obj_t * scr = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(scr, lv_color_hex(0x000000), 0);
+    lv_obj_t * lbl = lv_label_create(scr);
+    lv_label_set_text(lbl, TXT_DEEP_SLEEP_HINT);
+    lv_obj_set_style_text_align(lbl, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_color(lbl, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_set_style_text_font(lbl, &lv_font_montserrat_16, 0);
+    lv_obj_center(lbl);
+    lv_scr_load(scr);
+    lv_timer_t * t = lv_timer_create(deep_sleep_timer_cb, 2000, NULL);
+    lv_timer_set_repeat_count(t, 1);
+}
+#endif
+
 static void app_launcher_event_cb(lv_event_t * e) {
     int app_id = (int)(intptr_t)lv_event_get_user_data(e);
     Serial.printf("[UI] Launch app id=%d\n", app_id);
@@ -266,6 +295,9 @@ static void app_launcher_event_cb(lv_event_t * e) {
         if (app->id == APP_SLEEP) {
             lvgl_port_set_backlight(false); // Instant Sleep
         }
+#if CARUSOS_USE_DEEP_SLEEP
+        if (app->id == APP_DEEPSLEEP) deep_sleep_start_ui();
+#endif
         return;
     }
 

@@ -83,6 +83,7 @@ void app_build_settings(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * ti
     ui_add_app_icon(app_grid, APP_MIC);
     ui_add_app_icon(app_grid, APP_IMU);
     ui_add_app_icon(app_grid, APP_SLEEP);
+    ui_add_app_icon(app_grid, APP_DEEPSLEEP);
 }
 
 // ---------------------------------------------------------------------------

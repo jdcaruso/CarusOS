@@ -11,7 +11,13 @@
 #define PIN_I2C_SDA           47
 #define PIN_I2C_SCL           48
 
-// XCA9554 I/O-expander output channels (NOT GPIOs)
-#define EXP_PIN_AMP           3 // ES8311 amplifier enable
-#define EXP_PIN_BACKLIGHT     5 // LCD backlight enable
-#define EXP_PIN_PANEL_RST     6 // ST7701 panel reset
+// LCD backlight: GPIO4 drives the CTRL pin of the AP3032 LED driver
+// (PWM-capable; high = on). From the board schematic (net "BL").
+#define PIN_LCD_BL            4
+
+// XCA9554 I/O-expander channels (NOT GPIOs), from the board schematic.
+// EXIO0-2 (panel SPI) and EXIO7 (panel reset) are driven by Arduino_GFX's
+// Arduino_XCA9554SWSPI in lvgl_port.cpp. EXIO4 reads the PWR key.
+#define EXP_PIN_AMP           3 // ES8311 amplifier enable (PA_CTRL)
+#define EXP_PIN_TP_RST        5 // GT911 touch reset
+#define EXP_PIN_TP_INT        6 // GT911 INT (held low during reset = I2C 0x5D)

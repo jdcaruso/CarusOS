@@ -23,10 +23,10 @@ lv_color_t *disp_draw_buf;
 
 // The XCA9554 expander driver caches its output register in RAM and does a
 // read-modify-write of that cache on every digitalWrite(). The I2C HAL lock
-// makes each transaction atomic, but NOT the cache: the backlight (Core 1,
-// touch) and the audio amp (Core 0, Task_Audio) live in the same byte, so two
-// concurrent writes can clobber each other. This mutex serializes the two
-// runtime setters that touch the expander.
+// makes each transaction atomic, but NOT the cache, so every runtime write to
+// the expander (today only the audio amp, from Core 0's Task_Audio) goes
+// through this mutex. Boot-time writes in lvgl_port_init() run before any
+// other task exists.
 static SemaphoreHandle_t expander_mutex = NULL;
 
 // Set by my_disp_flush() whenever LVGL renders new content; consumed by
@@ -66,12 +66,24 @@ void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
 
 static bool backlight_state = true;
 
+// Backlight on GPIO4 (LEDC PWM). Before v0.46.1 this toggled expander pin 5,
+// which is actually the touch reset: "Sleep" reset the touch controller
+// instead of turning the screen off.
 void lvgl_port_set_backlight(bool state) {
-    if (!expander) return;
-    if (expander_mutex) xSemaphoreTake(expander_mutex, portMAX_DELAY);
     backlight_state = state;
-    expander->digitalWrite(EXP_PIN_BACKLIGHT, state ? HIGH : LOW);
-    if (expander_mutex) xSemaphoreGive(expander_mutex);
+    ledcWrite(PIN_LCD_BL, state ? 255 : 0);
+}
+
+// GPIOs float in deep sleep and the backlight would come back on, so drive
+// GPIO4 low and hold it. lvgl_port_init() releases the hold on the next boot.
+void lvgl_port_prepare_deep_sleep() {
+    backlight_state = false;
+    ledcDetach(PIN_LCD_BL);
+    pinMode(PIN_LCD_BL, OUTPUT);
+    digitalWrite(PIN_LCD_BL, LOW);
+    gpio_hold_en((gpio_num_t)PIN_LCD_BL);
+    gpio_deep_sleep_hold_en();
+    lvgl_port_set_audio_amp(false);
 }
 
 void lvgl_port_set_audio_amp(bool state) {
@@ -134,14 +146,23 @@ void lvgl_port_init() {
   expander_mutex = xSemaphoreCreateMutex();
 
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
-  expander->pinMode(EXP_PIN_BACKLIGHT, OUTPUT);
-  expander->pinMode(EXP_PIN_PANEL_RST, OUTPUT);
-  expander->digitalWrite(EXP_PIN_PANEL_RST, LOW);
+
+  // GT911 reset with INT held low, which selects I2C address 0x5D
+  // (GT911_SLAVE_ADDRESS_L). Afterwards INT is released: the GT911 drives it.
+  expander->pinMode(EXP_PIN_TP_RST, OUTPUT);
+  expander->pinMode(EXP_PIN_TP_INT, OUTPUT);
+  expander->digitalWrite(EXP_PIN_TP_INT, LOW);
   delay(200);
-  expander->digitalWrite(EXP_PIN_BACKLIGHT, LOW);
+  expander->digitalWrite(EXP_PIN_TP_RST, LOW);
   delay(200);
-  expander->digitalWrite(EXP_PIN_BACKLIGHT, HIGH);
+  expander->digitalWrite(EXP_PIN_TP_RST, HIGH);
   delay(200);
+  expander->pinMode(EXP_PIN_TP_INT, INPUT);
+
+  // Backlight: GPIO4 PWM, full on. Released from a deep-sleep hold first, if any.
+  gpio_hold_dis((gpio_num_t)PIN_LCD_BL);
+  ledcAttach(PIN_LCD_BL, 20000, 8);
+  ledcWrite(PIN_LCD_BL, 255);
 
   if (!gfx->begin()) {
     Serial.println("gfx->begin() failed!");

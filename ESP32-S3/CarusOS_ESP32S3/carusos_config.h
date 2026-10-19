@@ -9,7 +9,7 @@
 // one file that needs it, so the rest of the build never sees the passwords.
 #include "customizations/config_local.h"
 
-#define CARUSOS_VERSION         "v0.46.0"
+#define CARUSOS_VERSION         "v0.47.0"
 #define CARUSOS_AUTHOR          "Javier D. Caruso"
 #define CARUSOS_SOURCE_DATE     "2026-10-19"
 #define CARUSOS_LANG_ES         1 // 1 for Spanish, 0 for English
@@ -33,6 +33,7 @@
 #define CARUSOS_USE_TELNET_LOG  1 // 1: Telnet log server on port 23 (on/off at runtime in Options). 0: compiled out.
 #define CARUSOS_USE_OTA         1 // 1: Enable OTA Updates
 #define CARUSOS_USE_PMU         1 // 1: AXP2101 battery/USB status (status bar + Sys Info). 0: compiled out.
+#define CARUSOS_USE_DEEP_SLEEP  1 // 1: "Deep sleep" action in Settings; the BOOT button wakes it. 0: compiled out.
 
 // OTA (Over-The-Air). CARUSOS_OTA_PASSWORD is defined in secrets.h.
 // (Only ArduinoOTA is implemented; the HTTP-pull OTA config was never wired up

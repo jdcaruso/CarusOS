@@ -24,6 +24,7 @@ typedef enum {
     APP_ANIM,
     APP_MIC,
     APP_IMU,
+    APP_DEEPSLEEP,
 } carusos_app_id_t;
 
 // Fills an app window. The title bar and back button already exist; `content`
