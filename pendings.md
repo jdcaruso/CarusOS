@@ -7,7 +7,8 @@ cause, workaround, ruled-out hypothesis), it goes into the entry below.
 
 ## 🔬 Needs a hardware test
 
-- [ ] **v0.48.0 (Dashboard app).** Compile-checked only, never flashed. To check:
+- [ ] **v0.48.0 (Dashboard app).** Flashed 2026-10-19 by cable (hash verified);
+  nobody looked at the screen yet. To check:
   - The Dashboard icon is on the desktop; it opens and Back works.
   - With events in `config_local.h`: one card per event, the countdown ticks
     every second, and the "at HH:MM" time matches the real next occurrence
@@ -50,6 +51,27 @@ cause, workaround, ruled-out hypothesis), it goes into the entry below.
   - Options: the WiFi / Telnet / Animations switches still persist across reboots.
 
 ## 📝 To do
+
+- [ ] **Dashboard beep: quiet hours + quick mute.** Asked 2026-10-19: the beep must
+  not sound during meetings or at night. Today there is only the global on/off in
+  Options, which is easy to forget either way. Proposal: (1) quiet hours in
+  `config_local.h` (e.g. `CARUSOS_DASHBOARD_QUIET_FROM 23` / `_TO 8`, local time,
+  wrapping midnight) where beeps are skipped; (2) a one-tap mute on the Dashboard
+  screen ("mute for 1 h" / until re-enabled), shown with the bell icon crossed
+  out; (3) later, a "busy" flag the future remote-JSON card could set from the
+  work calendar. Keep it generic; compiled out with `CARUSOS_DASHBOARD_ALERT=0`.
+- [ ] **Speed up builds.** Measured 2026-10-19 on a 32-thread Windows box: a full
+  `arduino-cli` build took ~16 min — **10 min of library discovery** (one `gcc -E`
+  per file, serial; CPU idle) + 5 min compiling 792 objects + link/upload. The
+  CPU count is not the limit. To do: (1) always build with a fixed
+  `--build-path` (e.g. `%TEMP%\carusos-build`), measure an incremental rebuild
+  after touching one `.cpp`, and document the fast command under *Build & flash*
+  in AGENTS.md; (2) evaluate a `platformio.ini` next to the Arduino IDE flow
+  (same board settings and pinned libs, `lv_conf.h` handling) and compare times;
+  (3) owner's call: Windows Defender exclusions for `%LOCALAPPDATA%\Arduino15`,
+  the build path and `Documents\Arduino\libraries` (real-time scanning of every
+  spawned process/object is the likely cause of the slow discovery). Don't touch
+  CI without reading the GitHub Actions rules first.
 
 - [ ] **Measure real per-feature flash cost (differential builds).** The README has a
   *source-size* table (real, but only the in-sketch driver files); add a complementary
