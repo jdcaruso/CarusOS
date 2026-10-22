@@ -7,7 +7,8 @@ cause, workaround, ruled-out hypothesis), it goes into the entry below.
 
 ## 🔬 Needs a hardware test
 
-- [ ] **v0.49.0 (Dashboard remote items).** Built 2026-10-21, not flashed yet.
+- [ ] **v0.49.0 (Dashboard remote items).** Flashed 2026-10-21 by cable (hash verified);
+  serial shows `[Dash] remote sync ok: 4 items` against a 4-item list. Screen not checked yet.
   To check, with `CARUSOS_DASHBOARD_REMOTE_URL` set:
   - Serial shows `[Dash] remote sync ok: N items` a few seconds after WiFi
     connects, then every ~90 s; a bad URL logs the HTTP error and retries in 30 s.
