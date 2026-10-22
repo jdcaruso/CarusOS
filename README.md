@@ -1,6 +1,6 @@
 # CarusOS 📱
 
-![Version](https://img.shields.io/badge/version-v0.48.0-blue)
+![Version](https://img.shields.io/badge/version-v0.49.0-blue)
 ![Platform](https://img.shields.io/badge/platform-ESP32--S3-green)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
@@ -53,7 +53,7 @@ flash-footprint measurement.
 - **Live Background Services:**
   - NTP Client for real-time global Clock on the Status Bar.
   - Asynchronous background WiFi handling.
-- **Dashboard app** (`CARUSOS_APP_DASHBOARD`): cards refreshed every second. First card type: a **recurring countdown** — up to 4 events, each a label + one known occurrence (unix epoch, UTC) + a period, set in `customizations/config_local.h` (see the `.example`). Shows the time left and the local clock time of the next occurrence. Optional soft **beep** N seconds before each occurrence (`CARUSOS_DASHBOARD_ALERT`, default 10 min, volume `CARUSOS_DASHBOARD_ALERT_VOLUME`), on/off at runtime in Options; it fires even when the Dashboard is closed.
+- **Dashboard app** (`CARUSOS_APP_DASHBOARD`): cards refreshed every second. First card type: a **recurring countdown** — up to 4 events, each a label + one known occurrence (unix epoch, UTC) + a period, set in `customizations/config_local.h` (see the `.example`). Shows the time left and the local clock time of the next occurrence. Optional soft **beep** N seconds before each occurrence (`CARUSOS_DASHBOARD_ALERT`, default 10 min, volume `CARUSOS_DASHBOARD_ALERT_VOLUME`), on/off at runtime in Options; it fires even when the Dashboard is closed. Second card type, **remote items** (`CARUSOS_DASHBOARD_REMOTE`): a small JSON list fetched over WiFi from `CARUSOS_DASHBOARD_REMOTE_URL` every 90 s (format in the `.example` and `dash_remote.cpp`); its items fill the cards the countdowns leave free, most urgent first, colored by level, and are marked stale when the list can't be refreshed for longer than its `ttl`. The last good list stays if the source goes away.
 - **OTA updates:** explicit, per-session Over-The-Air mode (ArduinoOTA).
 - **File System (FFat) + File Explorer:** implemented, but **currently disabled** — mounting the FAT partition at boot crashes on this board. Status in [pendings.md](pendings.md).
 - **Remote Telnet Logging:** Debug your OS wirelessly without a serial cable! Just enable `CARUSOS_USE_TELNET_LOG` in `carusos_config.h`, connect your PC to the same WiFi, and run `telnet <ESP32_IP>` in your terminal. You can see the IP in the SysInfo app.

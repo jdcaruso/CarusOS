@@ -24,6 +24,18 @@
 // Leave CARUSOS_DASHBOARD_EVENTS undefined for an empty dashboard.
 #define CARUSOS_DASHBOARD_EVENTS \
     { "Standup", 1767268800, 86400, 300 }, /* daily, 2026-01-01 12:00 UTC; beep 5 min before */
+// Dashboard remote items (CARUSOS_DASHBOARD_REMOTE): a JSON list fetched over
+// WiFi every CARUSOS_DASHBOARD_REMOTE_POLL_S seconds; empty URL = off. Its
+// items fill the cards the events above leave free (max 4 cards in total).
+// Format v1 (see dash_remote.cpp):
+//   {"v":1,"updated":<epoch>,"ttl":900,"items":[
+//     {"id":"c1","t":"C1","k":"meet","lvl":1,"w":"call","at":<epoch>}]}
+//   t = short title, w = what, lvl = 0 green / 1 yellow / 2 red,
+//   at = unix epoch seconds (omit for a to-do), ttl = seconds before the
+//   board marks the list as stale if it can't refresh it.
+// Anyone with the URL can read the list: keep personal data out of it.
+#define CARUSOS_DASHBOARD_REMOTE_URL ""
+// #define CARUSOS_DASHBOARD_REMOTE_POLL_S 90
 // Optional beep tuning (defaults in carusos_config.h):
 // #define CARUSOS_DASHBOARD_ALERT_LEAD   600 // default lead for events without a 4th field
 // #define CARUSOS_DASHBOARD_ALERT_VOLUME 30  // 0-100, beep only

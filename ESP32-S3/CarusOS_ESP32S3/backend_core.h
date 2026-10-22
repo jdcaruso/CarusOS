@@ -56,6 +56,28 @@ void backend_set_dash_alert(bool enable);
 void* backend_download_file(const char* url, size_t* out_size);
 void backend_wifi_reconnect();
 
+// Dashboard remote items (CARUSOS_DASHBOARD_REMOTE): a JSON list polled on
+// Core 0 from CARUSOS_DASHBOARD_REMOTE_URL. Format and parser: dash_remote.cpp.
+#define DASH_REMOTE_MAX_ITEMS 8
+typedef struct {
+    char id[16];  // stable while the item lives
+    char t[8];    // short code shown as the card title
+    char w[24];   // what it is, from a closed list on the publisher side
+    char k[8];    // meet / due / todo / timer
+    int8_t lvl;   // 0 green, 1 yellow, 2 red
+    int64_t at;   // unix epoch seconds; 0 = no time (a to-do)
+    int32_t beep; // seconds before `at` to beep; 0 = none (not used yet)
+} dash_remote_item_t;
+typedef struct {
+    uint32_t seq;       // bumps on every good sync; 0 = never synced
+    uint32_t synced_ms; // millis() of the last good sync
+    int32_t ttl;        // seconds the list is fresh for; 0 = no limit
+    int count;
+    dash_remote_item_t items[DASH_REMOTE_MAX_ITEMS];
+} dash_remote_t;
+void dash_remote_start();                        // called once by backend_core_init()
+bool backend_dash_remote_get(dash_remote_t &out); // false if never synced (or busy right now)
+
 // File System (async: work runs on Core 0, UI polls the text result on Core 1)
 void backend_fs_request_list();          // ask Core 0 to list files
 void backend_fs_request_format();        // ask Core 0 to format/mount (never at boot)

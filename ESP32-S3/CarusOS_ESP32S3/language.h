@@ -55,11 +55,14 @@
     // Dashboard
     #define TXT_APP_DASHBOARD_NAME  "Panel"
     #define TXT_APP_DASHBOARD_TITLE "Panel"
-    #define TXT_DASH_EMPTY       "Sin tarjetas configuradas.\n\nDefini CARUSOS_DASHBOARD_EVENTS en\ncustomizations/config_local.h\n(ejemplo en config_local.h.example)."
+    #define TXT_DASH_EMPTY       "Sin tarjetas configuradas.\n\nDefini CARUSOS_DASHBOARD_EVENTS o\nCARUSOS_DASHBOARD_REMOTE_URL en\ncustomizations/config_local.h\n(ejemplo en config_local.h.example)."
     #define TXT_DASH_WAIT_TIME   "Esperando la hora (NTP/RTC)..."
     #define TXT_DASH_BAD_PERIOD  "Periodo invalido (debe ser > 0)."
     #define TXT_DASH_NOW         "Ahora!"
     #define TXT_DASH_AT          "Proximo a las"
+    #define TXT_DASH_AT_ONCE     "A las"
+    #define TXT_DASH_TODO        "Pendiente"
+    #define TXT_DASH_STALE       "datos viejos"
     // Options
     #define TXT_OPT_TELNET       "Telnet Logger (Puerto 23)"
     #define TXT_OPT_ANIM         "Animaciones UI"
@@ -148,11 +151,14 @@
     // Dashboard
     #define TXT_APP_DASHBOARD_NAME  "Dashboard"
     #define TXT_APP_DASHBOARD_TITLE "Dashboard"
-    #define TXT_DASH_EMPTY       "No cards configured.\n\nDefine CARUSOS_DASHBOARD_EVENTS in\ncustomizations/config_local.h\n(example in config_local.h.example)."
+    #define TXT_DASH_EMPTY       "No cards configured.\n\nDefine CARUSOS_DASHBOARD_EVENTS or\nCARUSOS_DASHBOARD_REMOTE_URL in\ncustomizations/config_local.h\n(example in config_local.h.example)."
     #define TXT_DASH_WAIT_TIME   "Waiting for time (NTP/RTC)..."
     #define TXT_DASH_BAD_PERIOD  "Invalid period (must be > 0)."
     #define TXT_DASH_NOW         "Now!"
     #define TXT_DASH_AT          "Next at"
+    #define TXT_DASH_AT_ONCE     "At"
+    #define TXT_DASH_TODO        "To do"
+    #define TXT_DASH_STALE       "stale data"
     // Options
     #define TXT_OPT_TELNET       "Telnet Logger (Port 23)"
     #define TXT_OPT_ANIM         "UI Animations"

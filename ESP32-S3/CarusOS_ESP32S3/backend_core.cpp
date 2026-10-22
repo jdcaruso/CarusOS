@@ -590,6 +590,10 @@ void backend_core_init() {
         &TaskBackend,
         0 // Core 0!
     );
+
+#if CARUSOS_DASHBOARD_REMOTE
+    dash_remote_start(); // its own Core 0 task: a TLS fetch must not stall this loop
+#endif
 }
 
 bool backend_get_power(int &percent, bool &charging, bool &usb, int &batt_mv) {

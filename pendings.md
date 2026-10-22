@@ -7,8 +7,23 @@ cause, workaround, ruled-out hypothesis), it goes into the entry below.
 
 ## 🔬 Needs a hardware test
 
-- [ ] **v0.48.0 (Dashboard app).** Flashed 2026-10-19 by cable (hash verified);
-  nobody looked at the screen yet. To check:
+- [ ] **v0.49.0 (Dashboard remote items).** Built 2026-10-21, not flashed yet.
+  To check, with `CARUSOS_DASHBOARD_REMOTE_URL` set:
+  - Serial shows `[Dash] remote sync ok: N items` a few seconds after WiFi
+    connects, then every ~90 s; a bad URL logs the HTTP error and retries in 30 s.
+  - The build-time countdowns keep their cards, unchanged; remote items fill
+    the free slots (4 cards in total), red first, then the nearest time; a
+    to-do (no `at`) says "Pending"; the value color follows `lvl`.
+  - A past `at` counts up with a "-"; editing the source shows up within ~2 min
+    (a GitHub gist's raw URL itself can lag ~5 min).
+  - WiFi off for longer than the list's `ttl`: the cards stay and their detail
+    line says "stale data".
+  - Free heap in Sys Info stays stable over a few polls (each poll is a TLS
+    connection on its own Core 0 task).
+  - Not in this step: remote beeps, the red full-screen alert, tap-to-dismiss.
+- [ ] **v0.48.0 (Dashboard app).** Flashed 2026-10-19 by cable (hash verified).
+  The owner confirmed on 2026-10-21 that the countdown works on the board; the
+  rest of this list was not reported item by item. To check:
   - The Dashboard icon is on the desktop; it opens and Back works.
   - With events in `config_local.h`: one card per event, the countdown ticks
     every second, and the "at HH:MM" time matches the real next occurrence

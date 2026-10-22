@@ -9,9 +9,9 @@
 // one file that needs it, so the rest of the build never sees the passwords.
 #include "customizations/config_local.h"
 
-#define CARUSOS_VERSION         "v0.48.0"
+#define CARUSOS_VERSION         "v0.49.0"
 #define CARUSOS_AUTHOR          "Javier D. Caruso"
-#define CARUSOS_SOURCE_DATE     "2026-10-19"
+#define CARUSOS_SOURCE_DATE     "2026-10-21"
 #define CARUSOS_LANG_ES         1 // 1 for Spanish, 0 for English
 
 // NTP Settings
@@ -59,6 +59,14 @@
 #ifndef CARUSOS_DASHBOARD_ALERT_VOLUME
 #define CARUSOS_DASHBOARD_ALERT_VOLUME 30  // 0-100, codec volume for the beep only
 #endif
+#define CARUSOS_DASHBOARD_REMOTE 1 // 1: Dashboard also shows items from a JSON URL polled over WiFi. 0: compiled out.
+// URL and poll interval; set the URL in customizations/config_local.h (empty = off).
+#ifndef CARUSOS_DASHBOARD_REMOTE_URL
+#define CARUSOS_DASHBOARD_REMOTE_URL    ""
+#endif
+#ifndef CARUSOS_DASHBOARD_REMOTE_POLL_S
+#define CARUSOS_DASHBOARD_REMOTE_POLL_S 90 // seconds between polls
+#endif
 
 // ---------------------------------------------------------------------------
 // Sanity checks: fail the build on flag combinations that cannot work, instead
@@ -72,6 +80,9 @@
 #endif
 #if CARUSOS_DASHBOARD_ALERT && !(CARUSOS_APP_DASHBOARD && CARUSOS_USE_AUDIO)
 #error "CARUSOS_DASHBOARD_ALERT needs CARUSOS_APP_DASHBOARD=1 and CARUSOS_USE_AUDIO=1."
+#endif
+#if CARUSOS_DASHBOARD_REMOTE && !CARUSOS_APP_DASHBOARD
+#error "CARUSOS_DASHBOARD_REMOTE needs CARUSOS_APP_DASHBOARD=1."
 #endif
 #if CARUSOS_APP_GALLERY && !CARUSOS_USE_PNG
 #error "CARUSOS_APP_GALLERY needs CARUSOS_USE_PNG=1 (it shows a downloaded PNG)."

@@ -65,6 +65,7 @@ LVGL callback.
 | `src/apps/apps.h` | App IDs, builder declarations, shell helpers for apps |
 | `src/apps/app_*.cpp` | One file per app (or per group of small apps) |
 | `backend_core.cpp` | Core 0: WiFi, NTP, RTC sync, audio, FS, OTA, Telnet |
+| `dash_remote.cpp` | Core 0 task: polls the Dashboard's remote JSON list, tiny parser, last-good copy for the UI |
 | `lvgl_port.cpp` | Display/touch/LVGL hardware glue (panel, GT911, backlight, expander) |
 | `language.h` | Compile-time i18n macros (`TXT_*`), EN/ES |
 | `es8311.*`, `audio_hal.h` | Speaker codec driver |
