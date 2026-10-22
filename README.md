@@ -1,6 +1,6 @@
 # CarusOS 📱
 
-![Version](https://img.shields.io/badge/version-v0.49.0-blue)
+![Version](https://img.shields.io/badge/version-v0.50.0-blue)
 ![Platform](https://img.shields.io/badge/platform-ESP32--S3-green)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
@@ -48,6 +48,7 @@ flash-footprint measurement.
 - **Zero-Footprint i18n:** Built-in multi-language engine using compile-time C++ macros (`CARUSOS_LANG_ES`), saving precious PSRAM.
 - **Hardware Integration:** 
   - I2S Audio Driver support (ES8311 Codec).
+  - Screen **brightness** slider in Options (10–100 %, PWM on GPIO4, saved in NVS).
   - Screen sleep (backlight off on GPIO4, touch wakes it) and **deep sleep** (Settings → Deep sleep; the BOOT button wakes the board).
   - External I2C Expander support (XCA9554) for the panel init, touch reset and audio amp.
 - **Live Background Services:**

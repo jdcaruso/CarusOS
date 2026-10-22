@@ -65,10 +65,14 @@ void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
 }
 
 static bool backlight_state = true;
+static volatile uint8_t backlight_pct = 100; // brightness when lit, BL_MIN_PCT..100
+
+// Never fully dark while "on": at 0% the screen would look dead.
+#define BL_MIN_PCT 10
 
 // The backlight is active LOW (measured on the board 2026-10-19: GPIO4 high =
 // dark, low = lit). PWM duty is inverted accordingly: 0 = full brightness.
-#define BL_DUTY(on) ((on) ? 0 : 255)
+#define BL_DUTY(on) ((on) ? (255 - (backlight_pct * 255) / 100) : 255)
 
 // Backlight on GPIO4 (LEDC PWM). Before v0.46.1 this toggled expander pin 5,
 // which is actually the touch reset: "Sleep" reset the touch controller
@@ -76,6 +80,15 @@ static bool backlight_state = true;
 void lvgl_port_set_backlight(bool state) {
     backlight_state = state;
     ledcWrite(PIN_LCD_BL, BL_DUTY(state));
+}
+
+// Called from the Options slider (Core 1) and once at boot from the backend
+// after reading NVS (Core 0). Only touches the PWM duty, never LVGL.
+void lvgl_port_set_brightness(uint8_t pct) {
+    if (pct < BL_MIN_PCT) pct = BL_MIN_PCT;
+    if (pct > 100) pct = 100;
+    backlight_pct = pct;
+    if (backlight_state) ledcWrite(PIN_LCD_BL, BL_DUTY(true));
 }
 
 // GPIOs float in deep sleep and the backlight would come back on, so drive

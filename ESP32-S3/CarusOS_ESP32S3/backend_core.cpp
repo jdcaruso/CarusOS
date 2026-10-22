@@ -25,6 +25,7 @@ bool runtime_use_animations = false;
 bool runtime_use_bluetooth = false;
 bool runtime_wifi_enabled = true;
 bool runtime_dash_alert = true;
+volatile int runtime_brightness = 100;
 
 #if CARUSOS_USE_BLUETOOTH
 #include <BLEDevice.h>
@@ -93,6 +94,7 @@ typedef enum {
     BCMD_SET_BLUETOOTH,
     BCMD_SET_WIFI,
     BCMD_SET_DASH_ALERT,
+    BCMD_SET_BRIGHTNESS,
     BCMD_FS_LIST,     // list files (FFat runs on Core 0; result via backend_fs_poll)
     BCMD_FS_FORMAT,   // format/mount FFat on demand (slow; must not block the UI core)
 } backend_cmd_type_t;
@@ -129,6 +131,7 @@ static void do_wifi_reconnect();
 static void do_set_telnet(bool enable);
 static void do_set_animations(bool enable);
 static void do_set_dash_alert(bool enable);
+static void do_set_brightness(int pct);
 static void do_set_bluetooth(bool enable);
 static void do_set_wifi(bool enable);
 static void do_fs_list();
@@ -391,6 +394,8 @@ static void Task_Backend(void *pvParameters) {
     runtime_use_bluetooth  = preferences.getBool("bt", false);
     runtime_wifi_enabled   = preferences.getBool("wifi", true);
     runtime_dash_alert     = preferences.getBool("dashbeep", true);
+    runtime_brightness     = preferences.getUChar("bright", 100);
+    lvgl_port_set_brightness(runtime_brightness);
     Serial.printf("[NVS] loaded: wifi=%d telnet=%d anim=%d bt=%d\n",
                   (int)runtime_wifi_enabled, (int)runtime_use_telnet,
                   (int)runtime_use_animations, (int)runtime_use_bluetooth);
@@ -474,6 +479,7 @@ static void Task_Backend(void *pvParameters) {
                 case BCMD_SET_BLUETOOTH:   do_set_bluetooth(cmd.arg != 0);  break;
                 case BCMD_SET_WIFI:        do_set_wifi(cmd.arg != 0);       break;
                 case BCMD_SET_DASH_ALERT:  do_set_dash_alert(cmd.arg != 0); break;
+                case BCMD_SET_BRIGHTNESS:  do_set_brightness(cmd.arg);      break;
                 case BCMD_FS_LIST:         do_fs_list();                    break;
                 case BCMD_FS_FORMAT:       do_fs_format();                  break;
             }
@@ -681,6 +687,20 @@ void backend_set_dash_alert(bool enable) {
 
 static void do_set_dash_alert(bool enable) {
     preferences.putBool("dashbeep", enable);
+}
+
+int backend_get_brightness() {
+    return runtime_brightness;
+}
+
+void backend_set_brightness(int pct) {
+    runtime_brightness = pct;
+    backend_cmd_t cmd = { BCMD_SET_BRIGHTNESS, pct };
+    if (backend_queue) xQueueSend(backend_queue, &cmd, 0);
+}
+
+static void do_set_brightness(int pct) {
+    preferences.putUChar("bright", (uint8_t)pct);
 }
 
 void* backend_download_file(const char* url, size_t* out_size) {

@@ -67,6 +67,7 @@
     #define TXT_OPT_TELNET       "Telnet Logger (Puerto 23)"
     #define TXT_OPT_ANIM         "Animaciones UI"
     #define TXT_OPT_DASH_ALERT   "Panel: aviso sonoro"
+    #define TXT_OPT_BRIGHTNESS   "Brillo"
     #define TXT_OPT_BT           "Bluetooth (BLE)"
     #define TXT_OPT_WIFI_RECONNECT "Reconectar WiFi"
     // Shared
@@ -163,6 +164,7 @@
     #define TXT_OPT_TELNET       "Telnet Logger (Port 23)"
     #define TXT_OPT_ANIM         "UI Animations"
     #define TXT_OPT_DASH_ALERT   "Dashboard: alert beep"
+    #define TXT_OPT_BRIGHTNESS   "Brightness"
     #define TXT_OPT_BT           "Bluetooth (BLE)"
     #define TXT_OPT_WIFI_RECONNECT "Reconnect WiFi"
     // Shared

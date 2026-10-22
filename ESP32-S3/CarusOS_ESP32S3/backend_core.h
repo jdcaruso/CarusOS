@@ -51,6 +51,8 @@ bool backend_get_wifi_enabled();
 void backend_set_wifi_enabled(bool enable);
 bool backend_get_dash_alert();          // Dashboard pre-event beep (runtime, NVS)
 void backend_set_dash_alert(bool enable);
+int  backend_get_brightness();          // backlight %, persisted in NVS
+void backend_set_brightness(int pct);   // saves only; the slider applies it live
 
 // Network Utils
 void* backend_download_file(const char* url, size_t* out_size);

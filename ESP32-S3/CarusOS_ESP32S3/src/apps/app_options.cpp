@@ -1,5 +1,6 @@
-// Options: runtime toggles persisted in NVS (WiFi, Telnet, animations, Dashboard beep, BLE).
+// Options: runtime toggles persisted in NVS (brightness, WiFi, Telnet, animations, Dashboard beep, BLE).
 #include "apps.h"
+#include "../../lvgl_port.h"
 
 // One "label ............ [switch]" row.
 static lv_obj_t * options_add_switch(lv_obj_t * parent, const char * text, bool on, lv_event_cb_t cb) {
@@ -16,6 +17,32 @@ static lv_obj_t * options_add_switch(lv_obj_t * parent, const char * text, bool 
     if (on) lv_obj_add_state(sw, LV_STATE_CHECKED);
     lv_obj_add_event_cb(sw, cb, LV_EVENT_VALUE_CHANGED, NULL);
     return sw;
+}
+
+// "Brightness [=====o----]" row. Dragging applies the level live; NVS is
+// written once, on release, so a drag doesn't hammer the flash.
+static void options_add_brightness(lv_obj_t * parent) {
+    lv_obj_t * row = lv_obj_create(parent);
+    lv_obj_set_size(row, LV_PCT(100), 60);
+    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_border_width(row, 0, 0);
+
+    lv_obj_t * label = lv_label_create(row);
+    lv_label_set_text(label, TXT_OPT_BRIGHTNESS);
+
+    lv_obj_t * slider = lv_slider_create(row);
+    lv_obj_set_width(slider, LV_PCT(55));
+    lv_slider_set_range(slider, 10, 100);
+    lv_slider_set_value(slider, backend_get_brightness(), LV_ANIM_OFF);
+    lv_obj_add_event_cb(slider, [](lv_event_t * e) {
+        lv_obj_t * s = (lv_obj_t *)lv_event_get_target(e);
+        lvgl_port_set_brightness((uint8_t)lv_slider_get_value(s));
+    }, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_add_event_cb(slider, [](lv_event_t * e) {
+        lv_obj_t * s = (lv_obj_t *)lv_event_get_target(e);
+        backend_set_brightness(lv_slider_get_value(s));
+    }, LV_EVENT_RELEASED, NULL);
 }
 
 static bool switch_is_on(lv_event_t * e) {
@@ -35,6 +62,7 @@ void app_build_options(lv_obj_t * app_screen, lv_obj_t * content, lv_obj_t * tit
     lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_all(cont, 10, 0);
 
+    options_add_brightness(cont);
     options_add_switch(cont, "WiFi", backend_get_wifi_enabled(),
         [](lv_event_t * e) { backend_set_wifi_enabled(switch_is_on(e)); });
 #if CARUSOS_USE_TELNET_LOG

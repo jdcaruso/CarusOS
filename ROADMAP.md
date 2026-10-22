@@ -132,8 +132,7 @@ has to re-derive them:
   INT is not wired to the ESP32). A full power-off through the AXP2101 (PWR key
   turns it back on) is the other option, not done.
 - **Inactivity timeout:** Auto-dim/sleep the backlight after N seconds without touch.
-- **PWM brightness control:** the backlight is already on LEDC PWM (GPIO4,
-  v0.47.0) at full duty; a brightness slider just needs a `ledcWrite` level.
+- **PWM brightness control:** *done in v0.50.0* (Options slider, 10–100 %, NVS).
 - **Dashboard: more card types.** Next one: a remote JSON card that polls a
   URL served by a separate backend (the device holds no third-party tokens;
   the backend does the API work and returns ready-to-show values). The card
